@@ -5,5 +5,8 @@
 # Configuration file, keeping your local path secure
 config.yaml
 
+# Manual folder
+manual_flexpde/
+
 # Nozzlefiber output folders
 modelling/nozzlefiber/md*output/
