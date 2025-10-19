@@ -8,6 +8,7 @@ SCRIPT_DIR = Path(__file__).parent
 # FlexPDE Configuration
 FLEXPDE_EXE = "FlexPDE8n"
 THREADS = 8
+timeout = 1800
 
 # Read the template
 with open(SCRIPT_DIR / "template_nozzle.pde", "r") as f:
@@ -39,7 +40,7 @@ def make_and_run(run):
     
     # Run FlexPDE
     subprocess.run([FLEXPDE_EXE, f"-T{THREADS}", "-Q", "-NC", "-NM", f"{run['id']}.pde"], 
-                   cwd=output_folder, timeout=1800)
+                   cwd=output_folder, timeout=timeout)
 
 # Run all models
 if __name__ == '__main__':

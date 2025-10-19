@@ -10,7 +10,7 @@ import yaml
 from ahdts import extract_dates, xml_to_dict2, get_filepaths, data_to_df, find_nearest, save_as_pickle, load_pickle
 
 
-data_dir = yaml.safe_load(open("myproject.yaml"))["data_dir"] # Set data directory in myproject.yaml
+data_dir = yaml.safe_load(open(r"..\config.yaml"))["data_dir"] # Set data directory in config.yaml
 filepaths = get_filepaths(data_dir, 'xml')
 
 data_dict = xml_to_dict2(filepaths)

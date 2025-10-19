@@ -8,5 +8,5 @@ config.yaml
 # Manual folder
 manual_flexpde/
 
-# Nozzlefiber output folders
+# output folders with modelling results
 modelling/nozzlefiber/md*output/
