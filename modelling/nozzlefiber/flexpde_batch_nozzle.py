@@ -16,7 +16,7 @@ with open(SCRIPT_DIR / "template_nozzle.pde", "r") as f:
 
 # Read variable sets
 runs = []
-with open(SCRIPT_DIR / "2_batch_heat_variables_nozzle.txt", "r") as f:
+with open(SCRIPT_DIR / "1_batch_flux_variables_nozzle.txt", "r") as f:
     lines = f.readlines()
     header = [col.strip() for col in lines[0].split(",")]
     
@@ -26,12 +26,12 @@ with open(SCRIPT_DIR / "2_batch_heat_variables_nozzle.txt", "r") as f:
             runs.append(dict(zip(header, values)))
 
 def make_and_run(run):
-    # Replace placeholders with values from the run dictionary
+    # replace placeholders with values from the run dictionary
     content = template
     for key, value in run.items():
         content = content.replace(f"{{{key}}}", str(value))
 
-    # Create output subfolder and write PDE file
+    # create output subfolder and write PDE file
     output_folder = SCRIPT_DIR / f"{run['id']}_output"
     output_folder.mkdir(exist_ok=True)
     
