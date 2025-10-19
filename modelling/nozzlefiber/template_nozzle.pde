@@ -1,6 +1,6 @@
 { Fill in the following sections (removing comment marks ! if necessary),
   and delete those that are unused.}
-TITLE 'Bommelerwaard_V170_q52.8'     { the problem identification }
+TITLE '{id}'     { the problem identification }
 
 COORDINATES cartesian2  { coordinate system, 1D,2D,3D, etc }
 VARIABLES      
@@ -9,10 +9,10 @@ SELECT         { method controls }
 	aspect 1
 DEFINITIONS
 	tday=24*3600
-	Runtime=(7200)
+	Runtime=({runtime})
     Width=1													{Width of grid	[m]}
 	Height=1													{Height of grid	[m]}
-    transfer('head_optie1_output\head_Darcy52.8.dat', head)
+    transfer('..\head_optie1_output\head_Darcy{darcy_flux}.dat', head)
 
 {---------------------------------------------Properties tank and sediment-------------------------------------------------------------------------------}
 {groundwater properties}
@@ -21,7 +21,7 @@ DEFINITIONS
 	Kf = 0.591      																					{Thermal conductivity of water                 	[W/m/K]}
     kx=1																								{horizontal k value}{m/d}
 {Sediment properties}
-	T0= 25			 																			{average background temperature at T=0}
+	T0= {temperature}			 																			{average background temperature at T=0}
     inflowTemp=T0
 	n = 0.41																								{porositiy}
 	rhos = 2650 																						{Density sediment} {kg/m3}
@@ -37,10 +37,10 @@ DEFINITIONS
 	Source=0
 
 {HEAT INPUT to Cables}
-	Heatin=170												{Voltage for every timestep, will be calculated to heat input}
-	Cableheat = Heatin*3.5
-    t_cutoff = 1800										{time till heating turns off}
-    t_transition = 2											{short transition time from full heat to zero}
+	Heatin={voltage}												{Voltage for every timestep, will be calculated to heat input}
+	Cableheat = Heatin*{amperage}
+    t_cutoff = {heating_time}										{time till heating turns off}
+    t_transition = {buildup_time}											{short transition time from full heat to zero}
 
 {------------------------------------------------------------------CABLE PROPERTIES-------------------------------------------------------------------------------}
 {---------------------------------------------------------------------------------------------Strength cable}
@@ -494,7 +494,7 @@ PLOTS
 	vector(q*tday) as 'velocity in complete tank'
 {A3}
 	contour(temp)  fixed range(24, 80)  zoom (Locx_A3-0.01,Locy_A3-0.01,0.02,0.02)  painted nominmax as 'detailed temperature around  location A3' 
-	history(temp) at (Locx_A3_DTS1,Locy_A3_DTS1) (Locx_A3_DTS2,Locy_A3_DTS2) (Locx_A3_DTS3,Locy_A3_DTS3) (Locx_A3_DTS4,Locy_A3_DTS4)  fixed range (24,60) as 'DTS' export format"#1#b#2#b#3#b#4#b#t" file='Optie1_05_A3_DTS_v5.txt'
+	history(temp) at (Locx_A3_DTS1,Locy_A3_DTS1) (Locx_A3_DTS2,Locy_A3_DTS2) (Locx_A3_DTS3,Locy_A3_DTS3) (Locx_A3_DTS4,Locy_A3_DTS4)  fixed range (24,60) as 'DTS' export format"#1#b#2#b#3#b#4#b#t" file='{id}_05_A3_DTS_v5.txt'
 	!history(temp) at (Locx_A3_DTS2,Locy_A3_DTS2) as 'DTS2 temp A3' export format"#1#b#t" file='A3_DTS2.txt'	
 	!history(temp) at (Locx_A3_DTS3,Locy_A3_DTS3) as 'DTS3 temp A3' export format"#1#b#t" file='A3_DTS3.txt'	
 	!history(temp) at (Locx_A3_DTS4,Locy_A3_DTS4) as 'DTS4 temp A3' export format"#1#b#t" file='A3_DTS4.txt'	
