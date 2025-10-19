@@ -5,7 +5,7 @@ from pathlib import Path
 # Get the directory where this script is located
 SCRIPT_DIR = Path(__file__).parent
 
-# FlexPDE Configuration
+# FlexPDE configuration
 FLEXPDE_EXE = "FlexPDE8n"
 THREADS = 8
 timeout = 1800
