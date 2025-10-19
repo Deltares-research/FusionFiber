@@ -494,7 +494,7 @@ PLOTS
 	vector(q*tday) as 'velocity in complete tank'
 {A3}
 	contour(temp)  fixed range(24, 80)  zoom (Locx_A3-0.01,Locy_A3-0.01,0.02,0.02)  painted nominmax as 'detailed temperature around  location A3' 
-	history(temp) at (Locx_A3_DTS1,Locy_A3_DTS1) (Locx_A3_DTS2,Locy_A3_DTS2) (Locx_A3_DTS3,Locy_A3_DTS3) (Locx_A3_DTS4,Locy_A3_DTS4)  fixed range (24,80) as 'DTS' export format"#1#b#2#b#3#b#4#b#t" file='Optie1_05_A3_DTS_v5.txt'
+	history(temp) at (Locx_A3_DTS1,Locy_A3_DTS1) (Locx_A3_DTS2,Locy_A3_DTS2) (Locx_A3_DTS3,Locy_A3_DTS3) (Locx_A3_DTS4,Locy_A3_DTS4)  fixed range (24,60) as 'DTS' export format"#1#b#2#b#3#b#4#b#t" file='Optie1_05_A3_DTS_v5.txt'
 	!history(temp) at (Locx_A3_DTS2,Locy_A3_DTS2) as 'DTS2 temp A3' export format"#1#b#t" file='A3_DTS2.txt'	
 	!history(temp) at (Locx_A3_DTS3,Locy_A3_DTS3) as 'DTS3 temp A3' export format"#1#b#t" file='A3_DTS3.txt'	
 	!history(temp) at (Locx_A3_DTS4,Locy_A3_DTS4) as 'DTS4 temp A3' export format"#1#b#t" file='A3_DTS4.txt'	

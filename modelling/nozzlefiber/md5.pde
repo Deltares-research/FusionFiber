@@ -9,7 +9,7 @@ SELECT         { method controls }
 	aspect 1
 DEFINITIONS
 	tday=24*3600
-	Runtime=(7200)
+	Runtime=(5000)
     Width=1													{Width of grid	[m]}
 	Height=1													{Height of grid	[m]}
     transfer('head_optie1_output\head_Darcy36.0.dat', head)
@@ -38,7 +38,7 @@ DEFINITIONS
 
 {HEAT INPUT to Cables}
 	Heatin=170												{Voltage for every timestep, will be calculated to heat input}
-	Cableheat = Heatin*3.5
+	Cableheat = Heatin*2.5
     t_cutoff = 1800										{time till heating turns off}
     t_transition = 2											{short transition time from full heat to zero}
 
@@ -494,7 +494,7 @@ PLOTS
 	vector(q*tday) as 'velocity in complete tank'
 {A3}
 	contour(temp)  fixed range(24, 80)  zoom (Locx_A3-0.01,Locy_A3-0.01,0.02,0.02)  painted nominmax as 'detailed temperature around  location A3' 
-	history(temp) at (Locx_A3_DTS1,Locy_A3_DTS1) (Locx_A3_DTS2,Locy_A3_DTS2) (Locx_A3_DTS3,Locy_A3_DTS3) (Locx_A3_DTS4,Locy_A3_DTS4)  fixed range (24,80) as 'DTS' export format"#1#b#2#b#3#b#4#b#t" file='Optie1_05_A3_DTS_v5.txt'
+	history(temp) at (Locx_A3_DTS1,Locy_A3_DTS1) (Locx_A3_DTS2,Locy_A3_DTS2) (Locx_A3_DTS3,Locy_A3_DTS3) (Locx_A3_DTS4,Locy_A3_DTS4)  fixed range (24,60) as 'DTS' export format"#1#b#2#b#3#b#4#b#t" file='Optie1_05_A3_DTS_v5.txt'
 	!history(temp) at (Locx_A3_DTS2,Locy_A3_DTS2) as 'DTS2 temp A3' export format"#1#b#t" file='A3_DTS2.txt'	
 	!history(temp) at (Locx_A3_DTS3,Locy_A3_DTS3) as 'DTS3 temp A3' export format"#1#b#t" file='A3_DTS3.txt'	
 	!history(temp) at (Locx_A3_DTS4,Locy_A3_DTS4) as 'DTS4 temp A3' export format"#1#b#t" file='A3_DTS4.txt'	
