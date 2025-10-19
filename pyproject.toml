@@ -13,9 +13,6 @@ requires = ["hatchling"]
 channels = ["conda-forge"]
 platforms = ["win-64"]
 
-[tool.pixi.pypi-dependencies]
-fusionfiber = { path = ".", editable = true }
-
 [tool.pixi.tasks]
 
 [tool.pixi.dependencies]
