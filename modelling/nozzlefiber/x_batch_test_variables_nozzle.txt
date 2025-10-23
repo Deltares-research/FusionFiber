@@ -1,0 +1,4 @@
+id, runtime, darcy_flux, temperature, voltage, amperage, heating_time, buildup_time, rotate
+mdtest, 1, 103.2, 25, 170, 2.5, 1800, 2, 30
+
+

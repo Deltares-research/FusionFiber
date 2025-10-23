@@ -16,7 +16,7 @@ with open(SCRIPT_DIR / "template_nozzle.pde", "r") as f:
 
 # Read variable sets
 runs = []
-with open(SCRIPT_DIR / "1_batch_flux_variables_nozzle.txt", "r") as f:
+with open(SCRIPT_DIR / "x_batch_test_variables_nozzle.txt", "r") as f:
     lines = f.readlines()
     header = [col.strip() for col in lines[0].split(",")]
     

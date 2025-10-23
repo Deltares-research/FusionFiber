@@ -148,32 +148,32 @@ DEFINITIONS
 	Locx_A3_SC = Locx_A3
 	Locy_A3_SC = Locy_A3
 {DTS cables}
-	Locx_A3_DTS1 = Locx_A3+Rad_Strenght_Mantle+Rad_DTS_TPEO		{DTS right side}
-	Locy_A3_DTS1 = Locy_A3
-	Locx_A3_DTS2 = Locx_A3+((Rad_Strenght_Mantle+Rad_DTS_TPEO)*cos(90*(pi/180)))		{DTS Top side}
-	Locy_A3_DTS2 = Locy_A3+((Rad_Strenght_Mantle+Rad_DTS_TPEO)*sin(90*(pi/180)))	
-	Locx_A3_DTS3 = Locx_A3+((Rad_Strenght_Mantle+Rad_DTS_TPEO)*cos(180*(pi/180)))		{DTS Left side}
-	Locy_A3_DTS3 = Locy_A3+((Rad_Strenght_Mantle+Rad_DTS_TPEO)*sin(180*(pi/180)))	
-	Locx_A3_DTS4 = Locx_A3+((Rad_Strenght_Mantle+Rad_DTS_TPEO)*cos(270*(pi/180)))		{DTS bottom side}
-	Locy_A3_DTS4 = Locy_A3+((Rad_Strenght_Mantle+Rad_DTS_TPEO)*sin(270*(pi/180)))	
+	Locx_A3_DTS1 = Locx_A3+((Rad_Strenght_Mantle+Rad_DTS_TPEO)*cos((0 + {rotate})*(pi/180)))		{DTS right side}
+	Locy_A3_DTS1 = Locy_A3+((Rad_Strenght_Mantle+Rad_DTS_TPEO)*sin((0 +{rotate})*(pi/180)))
+	Locx_A3_DTS2 = Locx_A3+((Rad_Strenght_Mantle+Rad_DTS_TPEO)*cos((90 + {rotate})*(pi/180)))		{DTS Top side}
+	Locy_A3_DTS2 = Locy_A3+((Rad_Strenght_Mantle+Rad_DTS_TPEO)*sin((90 + {rotate})*(pi/180)))
+	Locx_A3_DTS3 = Locx_A3+((Rad_Strenght_Mantle+Rad_DTS_TPEO)*cos((180 + {rotate})*(pi/180)))		{DTS Left side}
+	Locy_A3_DTS3 = Locy_A3+((Rad_Strenght_Mantle+Rad_DTS_TPEO)*sin((180 + {rotate})*(pi/180)))
+	Locx_A3_DTS4 = Locx_A3+((Rad_Strenght_Mantle+Rad_DTS_TPEO)*cos((270 + {rotate})*(pi/180)))		{DTS bottom side}
+	Locy_A3_DTS4 = Locy_A3+((Rad_Strenght_Mantle+Rad_DTS_TPEO)*sin((270 + {rotate})*(pi/180)))
 {Heat cables}
-	Locx_A3_heat1=Locx_A3+((Rad_Strenght_Mantle+Rad_DTS_TPEO)*cos(330*(pi/180))) {right low}
-	Locy_A3_heat1=Locy_A3+((Rad_Strenght_Mantle+Rad_DTS_TPEO)*sin(330*(pi/180)))
-	Locx_A3_heat2=Locx_A3+((Rad_Strenght_Mantle+Rad_DTS_TPEO)*cos(60*(pi/180))) {top right}
-	Locy_A3_heat2=Locy_A3+((Rad_Strenght_Mantle+Rad_DTS_TPEO)*sin(60*(pi/180)))
-	Locx_A3_heat3=Locx_A3+((Rad_Strenght_Mantle+Rad_DTS_TPEO)*cos(150*(pi/180))) {left above}
-	Locy_A3_heat3=Locy_A3+((Rad_Strenght_Mantle+Rad_DTS_TPEO)*sin(150*(pi/180)))
-	Locx_A3_heat4=Locx_A3+((Rad_Strenght_Mantle+Rad_DTS_TPEO)*cos(240*(pi/180))) {bottom left}
-	Locy_A3_heat4=Locy_A3+((Rad_Strenght_Mantle+Rad_DTS_TPEO)*sin(240*(pi/180)))
+	Locx_A3_heat1=Locx_A3+((Rad_Strenght_Mantle+Rad_DTS_TPEO)*cos((330 + {rotate})*(pi/180))) {right low}
+	Locy_A3_heat1=Locy_A3+((Rad_Strenght_Mantle+Rad_DTS_TPEO)*sin((330 + {rotate})*(pi/180)))
+	Locx_A3_heat2=Locx_A3+((Rad_Strenght_Mantle+Rad_DTS_TPEO)*cos((60 + {rotate})*(pi/180))) {top right}
+	Locy_A3_heat2=Locy_A3+((Rad_Strenght_Mantle+Rad_DTS_TPEO)*sin((60 + {rotate})*(pi/180)))
+	Locx_A3_heat3=Locx_A3+((Rad_Strenght_Mantle+Rad_DTS_TPEO)*cos((150 + {rotate})*(pi/180))) {left above}
+	Locy_A3_heat3=Locy_A3+((Rad_Strenght_Mantle+Rad_DTS_TPEO)*sin((150 + {rotate})*(pi/180)))
+	Locx_A3_heat4=Locx_A3+((Rad_Strenght_Mantle+Rad_DTS_TPEO)*cos((240 + {rotate})*(pi/180))) {bottom left}
+	Locy_A3_heat4=Locy_A3+((Rad_Strenght_Mantle+Rad_DTS_TPEO)*sin((240 + {rotate})*(pi/180)))
 {Retour cables}
-	Locx_A3_retour1=Locx_A3+((Rad_Strenght_Mantle+Rad_DTS_TPEO)*cos(30*(pi/180))) {right high}
-	Locy_A3_retour1=Locy_A3+((Rad_Strenght_Mantle+Rad_DTS_TPEO)*sin(30*(pi/180)))
-	Locx_A3_retour2=Locx_A3+((Rad_Strenght_Mantle+Rad_DTS_TPEO)*cos(120*(pi/180))) {top left}
-	Locy_A3_retour2=Locy_A3+((Rad_Strenght_Mantle+Rad_DTS_TPEO)*sin(120*(pi/180)))
-	Locx_A3_retour3=Locx_A3+((Rad_Strenght_Mantle+Rad_DTS_TPEO)*cos(210*(pi/180))) {left down}
-	Locy_A3_retour3=Locy_A3+((Rad_Strenght_Mantle+Rad_DTS_TPEO)*sin(210*(pi/180)))
-	Locx_A3_retour4=Locx_A3+((Rad_Strenght_Mantle+Rad_DTS_TPEO)*cos(300*(pi/180))) {bottom right}
-	Locy_A3_retour4=Locy_A3+((Rad_Strenght_Mantle+Rad_DTS_TPEO)*sin(300*(pi/180)))
+	Locx_A3_retour1=Locx_A3+((Rad_Strenght_Mantle+Rad_DTS_TPEO)*cos((30 + {rotate})*(pi/180))) {right high}
+	Locy_A3_retour1=Locy_A3+((Rad_Strenght_Mantle+Rad_DTS_TPEO)*sin((30 + {rotate})*(pi/180)))
+	Locx_A3_retour2=Locx_A3+((Rad_Strenght_Mantle+Rad_DTS_TPEO)*cos((120 + {rotate})*(pi/180))) {top left}
+	Locy_A3_retour2=Locy_A3+((Rad_Strenght_Mantle+Rad_DTS_TPEO)*sin((120 + {rotate})*(pi/180)))
+	Locx_A3_retour3=Locx_A3+((Rad_Strenght_Mantle+Rad_DTS_TPEO)*cos((210 + {rotate})*(pi/180))) {left down}
+	Locy_A3_retour3=Locy_A3+((Rad_Strenght_Mantle+Rad_DTS_TPEO)*sin((210 + {rotate})*(pi/180)))
+	Locx_A3_retour4=Locx_A3+((Rad_Strenght_Mantle+Rad_DTS_TPEO)*cos((300 + {rotate})*(pi/180))) {bottom right}
+	Locy_A3_retour4=Locy_A3+((Rad_Strenght_Mantle+Rad_DTS_TPEO)*sin((300 + {rotate})*(pi/180)))
 
 INITIAL VALUES
 	Temp=T0

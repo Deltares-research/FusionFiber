@@ -1,10 +1,11 @@
-
+#%%
 # -*- coding: utf-8 -*-
 """
 Diameter nozzle fiber experiment analysis script
 """
 
 import yaml
+import matplotlib.pyplot as plt
 
 # Import functions from ahdts module
 from ahdts import extract_dates, xml_to_dict2, get_filepaths, data_to_df, find_nearest, save_as_pickle, load_pickle
@@ -13,6 +14,13 @@ from ahdts import extract_dates, xml_to_dict2, get_filepaths, data_to_df, find_n
 data_dir = yaml.safe_load(open(r"..\config.yaml"))["data_dir"] # Set data directory in config.yaml
 filepaths = get_filepaths(data_dir, 'xml')
 
+# Check if any XML files were found
+if not filepaths:
+    print(f"No XML files found in directory: {data_dir}")
+    print("Please check that the data_dir path in config.yaml is correct and contains XML files.")
+    exit(1)
+
+print(f"Found {len(filepaths)} XML files in {data_dir}")
 data_dict = xml_to_dict2(filepaths)
 
 # To save into pickle format and load it
@@ -24,24 +32,52 @@ df = data_to_df(data_dict, "Temperature") # Convert raw data to a dataframe (ind
 
 #%%
 ##----Separate into sections----##
+# for Diameter we only select h1, closest
 loc_dict = {
             "h1": {"a":[32.75,34.12],"b":[58.45,59.82],"c":[118.25,119.64],"d":[143.95,145.26]},
-            "h2": {"a":[35.17,36.55],"b":[55.9,57.28],"c":[120.68,122.05],"d":[141.4,142.81]},
-            "h3": {"a":[37.3,38.67],"b":[53.77,55.14],"c":[122.81,124.19],"d":[139.28,140.64]},
-            "h4": {"a":[39.73,41.10],"b":[51.34,52.72],"c":[125.23,126.6],"d":[136.85,138.23]},
-            "h5": {"a":[41.85,43.31],"b":[49.21,50.58],"c":[127.36,128.76],"d":[134.72,136.08]},
-            "h6": {"a":[44.38,45.82],"b":[46.73,48.15],"c":[129.82,131.27],"d":[132.17,133.66]}    
+            #"h2": {"a":[35.17,36.55],"b":[55.9,57.28],"c":[120.68,122.05],"d":[141.4,142.81]},
+            #"h3": {"a":[37.3,38.67],"b":[53.77,55.14],"c":[122.81,124.19],"d":[139.28,140.64]},
+            #"h4": {"a":[39.73,41.10],"b":[51.34,52.72],"c":[125.23,126.6],"d":[136.85,138.23]},
+            #"h5": {"a":[41.85,43.31],"b":[49.21,50.58],"c":[127.36,128.76],"d":[134.72,136.08]},
+            #"h6": {"a":[44.38,45.82],"b":[46.73,48.15],"c":[129.82,131.27],"d":[132.17,133.66]}    
            }
 
 
 for section in list(loc_dict.keys()):
-    for seg in list(loc_dict[section].keys()):
-        start = loc_dict[section][seg][0]
-        end = loc_dict[section][seg][1]
-        
-        sub_df = df.iloc[:,find_nearest(df.columns,start):find_nearest(df.columns,end)]
-        
-        
+    for core in list(loc_dict[section].keys()):
+        start = loc_dict[section][core][0]
+        end = loc_dict[section][core][1]
 
+        sub_df = df.iloc[:,find_nearest(df.columns,start):find_nearest(df.columns,end)]
+
+        sub_df.plot()
         
         
+z1 = df.iloc[]
+
+# %%
+# For the diameter project we first have to select the section closest to the screen h1
+# Within that we want to select the different cores together (a,b,c and d)
+# At at channels that are at the same vertical postion 
+
+import pandas as pd
+# Create a sub dataframe combining the first column of each core (a, b, c, d)
+section = "h1"
+combined_columns = []
+
+for core in ["a", "b", "c", "d"]:
+    start = loc_dict[section][core][0]
+    end = loc_dict[section][core][1]
+    
+    # Get the sub dataframe for this core
+    sub_df = df.iloc[:,find_nearest(df.columns,start):find_nearest(df.columns,end)]
+    
+    # Get the first column and rename it to include the core name
+    first_col = sub_df.iloc[:, 0]       
+    first_col.name = f"{section}_{core}"
+    combined_columns.append(first_col)
+
+# Combine all first columns into a single dataframe
+combined_df = pd.concat(combined_columns, axis=1)
+combined_df.plot()
+# %%
