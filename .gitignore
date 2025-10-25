@@ -10,3 +10,9 @@ manual_flexpde/
 
 # output folders with modelling results
 modelling/nozzlefiber/md*output/
+
+# Copilot preferences file (contains workflow context for AI assistant)
+copilot_readme.md
+
+# Pickle cache files
+*.pickle
