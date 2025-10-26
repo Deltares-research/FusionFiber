@@ -21,7 +21,7 @@ cd fusionfiber
 ```
 To create a pixi enviroment and install fusionfiber in it type:
 ```
-pixi run install
+pixi install
 ```
 
 ## Update fusionfiber
