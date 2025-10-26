@@ -2,5 +2,6 @@
 One cable, Three senses, Maximum insight
 
 
-<p align="center">
-  <img src="FusionFiber_logo.png" alt="DeltaSeis Logo
+<p align="left">
+  <img src="FusionFiber_logo.png" alt="FusionFiber Logo" width="500">
+</p>
