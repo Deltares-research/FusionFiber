@@ -15,6 +15,3 @@ modelling/nozzlefiber/md*output/
 data/cores/
 data/fluxes/
 data/depths/    
-
-# Pickle cache files
-*.pickle
