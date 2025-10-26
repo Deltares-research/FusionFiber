@@ -5,6 +5,8 @@ from pathlib import Path
 # Get the directory where this script is located
 SCRIPT_DIR = Path(__file__).parent
 
+bath_variable_file = SCRIPT_DIR / "1_batch_flux_variables_nozzle.txt"
+
 # FlexPDE configuration
 FLEXPDE_EXE = "FlexPDE8n"
 THREADS = 8
@@ -16,7 +18,7 @@ with open(SCRIPT_DIR / "template_nozzle.pde", "r") as f:
 
 # Read variable sets
 runs = []
-with open(SCRIPT_DIR / "x_batch_test_variables_nozzle.txt", "r") as f:
+with open(bath_variable_file, "r") as f:
     lines = f.readlines()
     header = [col.strip() for col in lines[0].split(",")]
     
