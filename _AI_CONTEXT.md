@@ -25,9 +25,12 @@ experiments = {
 ```
 
 ## PLOT ORGANIZATION (50 total plots)
-- **fluxes/** (18 plots): Sets 1&2 - Flux-based analyses
-- **depths/** (24 plots): Sets 3&4 - Depth-based comparisons  
-- **cores/** (8 plots): Sets 5&6 - Core-based analyses
+**IMPORTANT**: All plots are saved in the `data/` directory (same directory as the script):
+- **data/fluxes/** (18 plots): Sets 1&2 - Flux-based analyses
+- **data/depths/** (24 plots): Sets 3&4 - Depth-based comparisons  
+- **data/cores/** (8 plots): Sets 5&6 - Core-based analyses
+
+**PLOT LOCATIONS**: Script uses `data_dir = Path(__file__).parent` which means plots are saved to the `data/` folder, NOT the repository root or the config.yaml data_dir location.
 
 ## TECHNICAL REQUIREMENTS
 - **Environment**: Pixi package manager (critical for matplotlib)
@@ -37,8 +40,9 @@ experiments = {
 - **Format**: PowerPoint-ready plots (16:9, 300 DPI)
 
 ## DATA LOCATIONS
-- **Local cache**: `data/{md1-md9}_data.pickle`
-- **Original source**: `D:\Projects\MOOI Diameter\{MD1-MD9}/`
+- **Local cache**: `data/{md1-md9}_data.pickle` and `data/all_experiment_data.pickle`
+- **Original source**: `D:\Projects\MOOI Diameter\{MD1-MD9}/` (from config.yaml)
+- **Plot output**: `data/fluxes/`, `data/depths/`, `data/cores/` (script directory)
 - **Auto-recovery**: Script can rebuild from XML if pickles missing
 
 ## PERFORMANCE TARGETS
@@ -59,6 +63,8 @@ experiments = {
 - **Missing data**: Auto-load from original XML sources
 - **Path issues**: Use absolute paths consistently
 - **Environment issues**: Configure Python environment first
+- **PowerShell syntax**: Use `;` not `&&` for command chaining, use PowerShell cmdlets like `Get-ChildItem` instead of `dir` with cmd flags
+- **Plot location confusion**: Plots are ALWAYS in `data/fluxes/`, `data/depths/`, `data/cores/` - never in repository root or config data_dir
 
 ---
 *This file guides AI assistants working on the FusionFiber DTS analysis project*

@@ -39,6 +39,15 @@ experiments = {
     'MD7': [4.8, 170],   'MD8': [0.0, 170],  'MD9': [55.2, 230]
 }
 
+# Core locations and reversal configuration
+# Format: 'core_id': [start_position, end_position, reverse_direction]
+locations = {
+    'a': [32.75, 34.12, True],   # Core A: reverse for vertical alignment
+    'b': [58.45, 59.82, False],  # Core B: no reverse
+    'c': [118.25, 119.64, True], # Core C: reverse for vertical alignment
+    'd': [143.95, 145.26, False] # Core D: no reverse
+}
+
 # Get directories
 repo_dir = Path(__file__).parent.parent  # Repository root
 data_dir = Path(__file__).parent  # Script location for output files
@@ -170,16 +179,28 @@ else:
     file_size_mb = combined_pickle_file.stat().st_size / 1024 / 1024
     print(f"Optimized pickle file saved ({file_size_mb:.1f} MB)")
 
-# Plotting configuration and core setup
-locations = {'a': [32.75, 34.12], 'b': [58.45, 59.82], 'c': [118.25, 119.64], 'd': [143.95, 145.26]}
-plt.rcParams.update({'figure.figsize': (16, 9), 'figure.dpi': 300})
+# Plotting configuration
+plt.rcParams.update({
+    'figure.figsize': (16, 9), 
+    'figure.dpi': 300,
+    'savefig.dpi': 600,  # Higher DPI for saved figures
+    'lines.linewidth': 0.8,  # Thinner default line width
+    'axes.linewidth': 0.5,   # Thinner axes
+    'grid.linewidth': 0.3,   # Thinner grid lines
+    'font.size': 8,          # Smaller font for better scaling
+    'axes.labelsize': 9,     # Axis label size
+    'axes.titlesize': 10,    # Title size
+    'legend.fontsize': 8,    # Legend font size
+    'xtick.labelsize': 7,    # X-tick label size
+    'ytick.labelsize': 7     # Y-tick label size
+})
 
 # Get indices for each core (use first experiment as reference)
 core_indices = {}
 sample_df = list(all_data.values())[0]['df']
-for core, (start, end) in locations.items():
+for core, (start, end, reverse) in locations.items():
     indices = list(range(find_nearest(sample_df.columns, start), find_nearest(sample_df.columns, end) + 1))
-    if core in ['a', 'c']:  # Reverse cores A and C for vertical alignment
+    if reverse:  # Use the reverse flag from the locations dictionary
         indices.reverse()
     core_indices[core] = indices
 
@@ -243,7 +264,8 @@ for experiment_name, exp_data in all_data.items():
 
     plt.tight_layout()
     filename_depths = f"Darcy_flux_{str(darcy_flux).replace('.', '_')}_mday_depths.png"
-    plt.savefig(data_dir / "fluxes" / filename_depths, dpi=300, bbox_inches='tight')
+    plt.savefig(data_dir / "fluxes" / filename_depths, dpi=600, bbox_inches='tight', 
+                facecolor='white', edgecolor='none')
     plt.close()
     gc.collect()
     print(f"  Plot saved: fluxes/{filename_depths}")
@@ -279,7 +301,8 @@ for experiment_name, exp_data in all_data.items():
 
     plt.tight_layout()
     filename_cores = f"Darcy_flux_{str(darcy_flux).replace('.', '_')}_mday_cores.png"
-    plt.savefig(data_dir / "fluxes" / filename_cores, dpi=300, bbox_inches='tight')
+    plt.savefig(data_dir / "fluxes" / filename_cores, dpi=600, bbox_inches='tight', 
+                facecolor='white', edgecolor='none')
     plt.close()
     gc.collect()
     print(f"  Plot saved: fluxes/{filename_cores}")
@@ -326,7 +349,8 @@ for depth_idx in range(max_pos):
     
     plt.tight_layout()
     filename = f"Depth_{depths[depth_idx]:.2f}m_fluxes.png"
-    plt.savefig(data_dir / "depths" / filename, dpi=300, bbox_inches='tight')
+    plt.savefig(data_dir / "depths" / filename, dpi=600, bbox_inches='tight', 
+                facecolor='white', edgecolor='none')
     plt.close()
     gc.collect()
     print(f"  Plot saved: depths/{filename}")
@@ -369,7 +393,8 @@ for depth_idx in range(max_pos):
     
     plt.tight_layout()
     filename = f"Depth_{depths[depth_idx]:.2f}m_cores.png"
-    plt.savefig(data_dir / "depths" / filename, dpi=300, bbox_inches='tight')
+    plt.savefig(data_dir / "depths" / filename, dpi=600, bbox_inches='tight', 
+                facecolor='white', edgecolor='none')
     plt.close()
     gc.collect()
     print(f"  Plot saved: depths/{filename}")
@@ -414,7 +439,8 @@ for core_idx, core in enumerate(['a', 'b', 'c', 'd']):
     
     plt.tight_layout()
     filename = f"Core_{core_labels[core_idx]}_fluxes.png"
-    plt.savefig(data_dir / "cores" / filename, dpi=300, bbox_inches='tight')
+    plt.savefig(data_dir / "cores" / filename, dpi=600, bbox_inches='tight', 
+                facecolor='white', edgecolor='none')
     plt.close()
     gc.collect()
     print(f"  Plot saved: cores/{filename}")
@@ -460,7 +486,8 @@ for core_idx, core in enumerate(['a', 'b', 'c', 'd']):
     
     plt.tight_layout()
     filename = f"Core_{core_labels[core_idx]}_depths.png"
-    plt.savefig(data_dir / "cores" / filename, dpi=300, bbox_inches='tight')
+    plt.savefig(data_dir / "cores" / filename, dpi=600, bbox_inches='tight', 
+                facecolor='white', edgecolor='none')
     plt.close()
     gc.collect()
     print(f"  Plot saved: cores/{filename}")
