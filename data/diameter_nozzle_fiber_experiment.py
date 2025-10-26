@@ -43,11 +43,6 @@ experiments = {
 repo_dir = Path(__file__).parent.parent  # Repository root
 data_dir = Path(__file__).parent  # Script location for output files
 
-# Load config for local data directory
-config_file = repo_dir / "config.yaml"
-with open(config_file, 'r') as f:
-    config = yaml.safe_load(f)
-local_data_dir = Path(config['data_dir'])
 
 # Data loading with fallback strategy
 print("Loading experiment data...")
@@ -71,8 +66,26 @@ if combined_pickle_file.exists():
         print(f"  {md_id}: {exp_data['darcy_flux']} m/day, {exp_data['voltage']}V - {df.shape[0]}×{df.shape[1]}")
         
 else:
+    # Load config for local data directory
+    config_file = repo_dir / "config.yaml"
+    if not config_file.exists():
+        print("ERROR: No combined data pickle found and no path to pointing to subfolders with raw xml data available!")
+        print(f"Config file not found: {config_file}")
+        print("If you have the raw xml data, add a config.yaml in the main repo directory that contains:")
+        print('data_dir: "path\\to\\main_data_folder"')
+        exit(1)
+
+    try:
+        with open(config_file, 'r') as f:
+            config = yaml.safe_load(f)
+        local_data_dir = Path(config['data_dir'])
+        print(f"Local data directory: {local_data_dir}")
+    except KeyError:
+        print("ERROR: Config file exists but 'data_dir' key not found!")
+        print("Please add 'data_dir: \"path\\to\\main_data_folder\"' to config.yaml")
+        exit(1)
+
     print("Combined pickle not found. Loading from local data directory...")
-    print(f"Local data directory: {local_data_dir}")
     all_data = {}
     for experiment_name, params in experiments.items():
         darcy_flux = params[0]
