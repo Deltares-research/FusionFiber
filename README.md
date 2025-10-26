@@ -41,8 +41,8 @@ To reproduce the data results (50 plots) you can run the main script in the data
 pixi run python data/diameter_nozzle_fiber_experiment.py
 ```
 
-You can also reproduce the modelling data, but this requires a FlexPDE installation on your machine, which is a proprietary  
-licensed software. But if you have this and if the executable is in your PATH environment variable, try:
+You can also reproduce the modelling data, but this requires a FlexPDE installation on your machine,  
+which is a proprietary licensed software. But if you have this and if the executable is in your PATH  environment variable, try:
 
 ```
 pixi run python modelling/nozzlefiber/flexpde_batch_nozzle.py
