@@ -31,7 +31,7 @@ git pull
 ```
 And the same as with installation type:
 ```
-pixi run install
+pixi install
 ```
 
 ## Run the main scripts to reproduce data (en optional model) results
