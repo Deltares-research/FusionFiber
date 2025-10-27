@@ -55,3 +55,20 @@ In the script you can set to different bath_variable_file txt files:
 - 1_batch_flux_variables_nozzle.txt (default)
 - 2_batch_heat_variables_nozzle.txt
 - 3_batch_flux_rotated30deg_variables_nozzle.txt (un construction)
+
+## Presentation Plots
+
+For creating publication-ready presentation plots, use the specialized plotting scripts:
+
+### Experimental Data Plots
+Generate 4 analysis plots of ah-dts experiment data:
+```
+pixi run python data/presentation_plots_experiment.py
+```
+
+### Simulation Data Plots
+Generate Darcy flow comparison from simulated data:
+```
+pixi run python modelling/nozzlefiber/presentation_plots_simulations.py
+```
+All plots are saved as high-resolution PNG files (600 DPI) with professional styling and consistent formatting.
