@@ -48,6 +48,10 @@ locations = {
     'd': [143.95, 145.26, False] # Core D: no reverse
 }
 
+# Plot generation control
+GENERATE_STANDARD_PLOTS = False  # Set to False to skip regenerating all 50 standard plots  
+GENERATE_CUSTOM_PLOTS = True     # Set to True to generate custom plots
+
 # Get directories
 repo_dir = Path(__file__).parent.parent  # Repository root
 data_dir = Path(__file__).parent  # Script location for output files
@@ -187,12 +191,12 @@ plt.rcParams.update({
     'lines.linewidth': 0.8,  # Thinner default line width
     'axes.linewidth': 0.5,   # Thinner axes
     'grid.linewidth': 0.3,   # Thinner grid lines
-    'font.size': 8,          # Smaller font for better scaling
-    'axes.labelsize': 9,     # Axis label size
-    'axes.titlesize': 10,    # Title size
-    'legend.fontsize': 8,    # Legend font size
-    'xtick.labelsize': 7,    # X-tick label size
-    'ytick.labelsize': 7     # Y-tick label size
+    'font.size': 12,         # Larger base font size
+    'axes.labelsize': 14,    # Larger axis label size
+    'axes.titlesize': 10,    # Keep title size as requested
+    'legend.fontsize': 12,   # Larger legend font size
+    'xtick.labelsize': 11,   # Larger X-tick label size
+    'ytick.labelsize': 11    # Larger Y-tick label size
 })
 
 # Get indices for each core (use first experiment as reference)
@@ -218,6 +222,7 @@ print(f"Setup complete: {max_pos} depths per core, {len(core_labels)} cores")
 for folder in ["fluxes", "depths", "cores"]:
     (data_dir / folder).mkdir(exist_ok=True)
 
+# Plot generation - 6 sets, 50 plots total
 # Plot generation - 6 sets, 50 plots total
 print("\nGenerating plot sets...")
 
@@ -492,19 +497,87 @@ for core_idx, core in enumerate(['a', 'b', 'c', 'd']):
     gc.collect()
     print(f"  Plot saved: cores/{filename}")
 
+else:
+    print("\nSkipping standard plots (GENERATE_STANDARD_PLOTS = False)")
+
+# =============================================================================
+# CUSTOM PLOT: Core B at Key Depths (excluding MD9)
+# =============================================================================
+if GENERATE_CUSTOM_PLOTS:
+    print("Creating custom plot: Core B key depths (0.0m, 0.5m, 1.0m) excluding MD9...")
+
+# Filter data to exclude MD9 and sort by Darcy flux (ascending: 0.0 to 103.2)
+filtered_data = {k: v for k, v in all_data.items() if k != 'MD9'}
+# Sort by Darcy flux rate (ascending order)
+filtered_data = dict(sorted(filtered_data.items(), key=lambda x: x[1]['darcy_flux']))
+
+# Define target depths and find closest indices
+target_depths = [0.0, 0.5, 1.0]
+target_depth_indices = []
+for target in target_depths:
+    closest_idx = min(range(len(depths)), key=lambda i: abs(depths[i] - target))
+    target_depth_indices.append(closest_idx)
+
+# Create the plot
+fig, axes = plt.subplots(1, 3, figsize=(16, 5))
+fig.suptitle('Core B - Flux Comparison at Key Depths (Excluding MD9)', fontsize=16, fontweight='bold')
+
+flux_colors = plt.cm.plasma(np.linspace(0, 1, len(filtered_data)))
+core_idx = 1  # Core B is index 1 (b)
+core = 'b'
+
+for plot_idx, depth_idx in enumerate(target_depth_indices):
+    ax = axes[plot_idx]
+    
+    if depth_idx < len(core_indices[core]):
+        for flux_idx, (experiment_name, exp_data) in enumerate(filtered_data.items()):
+            df = exp_data['df']
+            darcy_flux = exp_data['darcy_flux']
+            
+            start_time = df.index[0]
+            relative_time = (df.index - start_time).total_seconds() / 60
+            
+            col_idx = core_indices[core][depth_idx]
+            temp_data = df.iloc[:, col_idx]
+            ax.plot(relative_time, temp_data, color=flux_colors[flux_idx], alpha=0.7,
+                   label=f'{darcy_flux} m/day' if plot_idx == 0 else "")
+    
+    ax.set_title(f'Depth: {depths[depth_idx]:.1f}m')
+    ax.set_xlabel('Time (minutes)')
+    ax.set_ylabel('Temperature (°C)')
+    ax.set_ylim(20, 50)
+    ax.grid(True, alpha=0.3)
+    ax.tick_params(axis='x', rotation=45)
+
+    # Add legend
+    handles, labels = axes[0].get_legend_handles_labels()
+    fig.legend(handles, labels, loc='upper center', bbox_to_anchor=(0.5, -0.02), 
+               title='Darcy Flux', ncol=len(labels), frameon=True, fancybox=True, shadow=True)
+
+    plt.tight_layout()
+    filename = "Core_B_key_depths_no_MD9.png"
+    plt.savefig(data_dir / "cores" / filename, dpi=600, bbox_inches='tight', 
+                facecolor='white', edgecolor='none')
+    plt.close()
+    gc.collect()
+    print(f"  Plot saved: cores/{filename}")
+else:
+    print("Skipping custom plots (GENERATE_CUSTOM_PLOTS = False)")
+
 # Final summary
 print(f"\n{'='*60}")
 print("COMPLETE plot generation finished successfully!")
 print(f"{'='*60}")
-print(f"Generated all 50 plots:")
+print(f"Generated all 51 plots:")
 print(f"- Set 1 (Depths by Flux): 9 plots in fluxes/")
 print(f"- Set 2 (Cores by Flux): 9 plots in fluxes/")
 print(f"- Set 3 (Fluxes by Depth): 12 plots in depths/")
 print(f"- Set 4 (Cores by Depth): 12 plots in depths/")
 print(f"- Set 5 (Fluxes by Core): 4 plots in cores/")
 print(f"- Set 6 (Depths by Core): 4 plots in cores/")
+print(f"- Custom: Core B key depths: 1 plot in cores/")
 print(f"All plots organized in:")
 print(f"- fluxes/ folder: 18 plots (Sets 1&2)")
 print(f"- depths/ folder: 24 plots (Sets 3&4)")
-print(f"- cores/ folder: 8 plots (Sets 5&6)")
+print(f"- cores/ folder: 9 plots (Sets 5&6 + Custom)")
 print(f"{'='*60}")

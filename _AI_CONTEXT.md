@@ -66,5 +66,31 @@ experiments = {
 - **PowerShell syntax**: Use `;` not `&&` for command chaining, use PowerShell cmdlets like `Get-ChildItem` instead of `dir` with cmd flags
 - **Plot location confusion**: Plots are ALWAYS in `data/fluxes/`, `data/depths/`, `data/cores/` - never in repository root or config data_dir
 
+## PLOT STYLING PREFERENCES
+
+### Color Palettes
+- **Flux/Flow comparisons**: Use `plt.cm.plasma` colormap
+- **Depth comparisons**: Use `plt.cm.viridis` colormap  
+- **Avoid**: Discrete color dictionaries, prefer continuous colormaps from matplotlib
+
+### Plot Labeling
+- **Do NOT reference "MD" in plot labels or legends**
+- Use descriptive values instead (e.g., "57.6 m/day" instead of "MD4: 57.6 m/day")
+- Keep legends clean and focused on the scientific parameters
+
+### Consistent Styling
+- High DPI output (600 DPI for saved figures)
+- Font sizes: 16pt for axes, 20pt for titles, 14pt for legends
+- Right-side vertical legends for multi-line plots
+- Alpha transparency: 0.7-0.8 for overlapping lines
+- Line width: 1.2px for data lines (thinner than previous 1.5px)
+- Grid transparency: alpha=0.5 (less transparent than previous alpha=0.3)
+
+### Color Map Direction for Darcy Flows
+- **Dark colors for low flows**: Use `np.linspace(0, 1, n)` with plasma colormap
+- Low Darcy flows (0.0 m/day) = dark purple/blue colors
+- High Darcy flows (103.2 m/day) = bright yellow/pink colors  
+- Legend order: ascending (0.0 to 103.2 m/day) with natural color progression
+
 ---
 *This file guides AI assistants working on the FusionFiber DTS analysis project*
