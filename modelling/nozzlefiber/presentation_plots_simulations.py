@@ -1,3 +1,4 @@
+
 #!/usr/bin/env python3
 """Darcy flow comparison plot from MD simulation data."""
 
@@ -15,7 +16,7 @@ plots_dir.mkdir(exist_ok=True)
 
 # Load data
 with open(pickle_file, 'rb') as f:
-    data = pickle.load(f)
+	data = pickle.load(f)
 
 # Plot configuration
 plt.rcParams.update({'figure.figsize': (16, 8), 'font.size': 14, 'savefig.dpi': 600})
@@ -28,25 +29,23 @@ core_labels = ['A', 'B', 'C', 'D']
 
 # Plot both conditions
 for ax, md_name, title in [(axes[0], 'md8', '0.0 m/day'), (axes[1], 'md4', '57.6 m/day')]:
-    md_data = data[(data['MD'] == md_name) & (data['Time_min'] <= 55)]
-    
-    for core, color, label in zip(cores, core_colors, core_labels):
-        ax.plot(md_data['Time_min'], md_data[core], color=color, linewidth=1.2, 
-               alpha=0.8, label=label)
-    
-    ax.set_title(title, fontweight='bold')
-    ax.set_xlabel('Time (minutes)')
-    ax.set_ylabel('Temperature (°C)')
-    ax.grid(True, alpha=0.3)
-    ax.set_xlim(0, 55)
-    ax.legend(loc='upper right', title='Core', frameon=True)
+	md_data = data[(data['MD'] == md_name) & (data['Time_min'] <= 55)]
+	for core, color, label in zip(cores, core_colors, core_labels):
+		ax.plot(md_data['Time_min'], md_data[core], color=color, linewidth=1.2, 
+			   alpha=0.8, label=label)
+	ax.set_title(title, fontweight='bold')
+	ax.set_xlabel('Time (minutes)')
+	ax.set_ylabel('Temperature (°C)')
+	ax.grid(True, alpha=0.3)
+	ax.set_xlim(0, 55)
+	ax.legend(loc='upper right', title='Core', frameon=True)
 
 # Consistent y-axis
 all_temps = []
 for md_name in ['md8', 'md4']:
-    md_data = data[(data['MD'] == md_name) & (data['Time_min'] <= 55)]
-    for core in cores:
-        all_temps.extend(md_data[core].values)
+	md_data = data[(data['MD'] == md_name) & (data['Time_min'] <= 55)]
+	for core in cores:
+		all_temps.extend(md_data[core].values)
 
 temp_min, temp_max = min(all_temps) - 1, max(all_temps) + 1
 axes[0].set_ylim(temp_min, temp_max)

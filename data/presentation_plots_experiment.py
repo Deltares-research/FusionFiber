@@ -159,5 +159,47 @@ add_legend(fig, 'Depth', is_fig=True)
 
 save_plot("Core_B_voltage_comparison_170V_vs_230V.png")
 
+
+# Plot: Core B at 0.5m depth, 0.0 m/day, log x-axis starting at 100 min
+print("Creating Core B 0.0 m/day log-x plot...")
+fig, ax = plt.subplots(figsize=(16, 8))
+fig.suptitle('Core B at 0.5m Depth - 0.0 m/day Darcy Flux (Log Time)', fontweight='bold')
+
+# Find MD8 experiment (0.0 m/day)
+md8_data = all_data.get('MD8')
+depth_idx = find_nearest(depths, 0.5)
+if md8_data and depth_idx < len(core_indices['b']):
+    time, temp = get_data(md8_data, 'b', depth_idx)
+    mask = time >= 5.5
+    ax.plot(time[mask], temp[mask], color='#1f77b4', alpha=0.8, linewidth=1.5, label='0.0 m/day')
+    ax.set_xscale('log')
+    ax.set_xlim(5, time.max())
+    ax.set_xticks([10, 15, 20, 25, 30])  # 100, 1000, 10000 seconds in minutes
+    ax.get_xaxis().set_major_formatter(matplotlib.ticker.ScalarFormatter())
+    setup_axis(ax, '', (22, 42))
+    add_legend(ax, 'Darcy Flow')
+
+    # Fit a straight line in log-space so it appears straight on log-x plot
+    fit_mask = (time >= 10) & (time <= 30)
+    fit_time = time[fit_mask]
+    fit_temp = temp[fit_mask]
+    if len(fit_time) > 1:
+        # Interpolate temperature at exactly 10 and 30 minutes
+        T1 = np.interp(10, fit_time, fit_temp)
+        T2 = np.interp(30, fit_time, fit_temp)
+        delta_T = T2 - T1
+        delta_t = 20.0
+        # Fit in log-space for the line
+        log_time = np.log10(fit_time)
+        coeffs = np.polyfit(log_time, fit_temp, 1)
+        fit_temp_line = np.polyval(coeffs, log_time)
+        ax.plot(fit_time, fit_temp_line, color='red', linestyle='--', linewidth=2, label='Log-space fit')
+    ax.text(0.05, 0.95, f'ΔT={delta_T:.2f}°C\nt1=10 min\nt2=30 min', transform=ax.transAxes,
+        fontsize=14, color='red', verticalalignment='top', bbox=dict(facecolor='white', alpha=0.7, edgecolor='red'))
+
+    save_plot("Core_B_0md_05m_depth_logx.png")
+else:
+    print("MD8 data or depth index not found, plot not created.")
+
 print("All plots generated successfully!")
 print("="*60)
