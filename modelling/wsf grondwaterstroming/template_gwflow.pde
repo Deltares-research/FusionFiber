@@ -23,7 +23,7 @@ DEFINITIONS
 {Sediment properties}
 	T0= {temperature}			 																			{average background temperature at T=0}
     inflowTemp=T0
-	n = 0.41																								{porositiy}
+	n = {porosity}																								{porositiy}
 	rhos = 2650 																						{Density sediment} {kg/m3}
 	cs=830																								{Specific heat sediment}{J/kg*K}
 	Ks = 2.301169      																			{Thermal conductivity of solid particles   [W/m/K]} {fitted so that Kb=1.6 W/m/K}
@@ -38,7 +38,7 @@ DEFINITIONS
 
 {HEAT INPUT to Cables}
 	Heatin={voltage}												{Voltage for every timestep, will be calculated to heat input}
-	Cableheat = Heatin*{amperage}
+	Cableheat = Heatin
     t_cutoff = {heating_time}										{time till heating turns off}
     t_transition = {buildup_time}											{short transition time from full heat to zero}
 
