@@ -10,6 +10,7 @@ manual_flexpde/
 
 # output folders with modelling results
 modelling/nozzlefiber/md*output/
+modelling/wsf grondwaterstroming/*_output/
 
 #output folders for data processing results
 data/cores/

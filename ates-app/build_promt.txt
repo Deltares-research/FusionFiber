@@ -1,0 +1,29 @@
+You are an expert Python developer tasked with building a complete, production-ready Streamlit dashboard that:
+
+1. Continuously monitors a folder where new XML files are saved every ~10 seconds by a measuring device.
+2. Runs my custom processing script on each new file as soon as it appears.
+3. Aggregates processed results and displays them in a live dashboard with:
+   - Key metrics (e.g., averages, min/max, custom KPIs from my script)
+   - Time-series charts that auto-refresh
+   - Optional raw data preview
+4. Refreshes automatically without manual reload.
+5. Can be deployed for free and shared via a public link (e.g., Streamlit Cloud).
+6. Handles edge cases: missing columns, empty files, and concurrent writes.
+7. Is simple to configure: I want to define the folder path and processing logic in one place.
+
+**Input I will provide:**
+- My processing script (Python function or module).
+- Example XML file (with real column names and sample data).
+- Any additional requirements you need to clarify.
+
+**Your tasks:**
+- Ask me any questions you need to make this specific to my situation (e.g., what metrics to show, how to handle errors, what charts to include).
+- Then generate:
+   - A complete Python app using Streamlit.
+   - Clear instructions for deploying on Streamlit Cloud.
+   - Comments explaining where to plug in my processing script.
+   - Optional enhancements: caching, folder watcher, and responsive layout.
+
+Do NOT give me a generic template. Make it fully usable with minimal tweaks once I provide my script and sample CSV.
+
+Start by asking me the critical questions you need to make this app tailored and robust.
