@@ -20,12 +20,14 @@ with open(SCRIPT_DIR / "template_gwflow.pde", "r") as f:
 runs = []
 with open(batch_variable_file, "r") as f:
     lines = f.readlines()
-    header = [col.strip() for col in lines[0].split(",")]
-    
-    for line in lines[1:]:
-        if line.strip():
-            values = [val.strip() for val in line.split(",")]
-            runs.append(dict(zip(header, values)))
+
+    # Skip empty/comment lines to find the header
+    data_lines = [line for line in lines if line.strip() and not line.lstrip().startswith("#")]
+    header = [col.strip() for col in data_lines[0].split(",")]
+
+    for line in data_lines[1:]:
+        values = [val.strip() for val in line.split(",")]
+        runs.append(dict(zip(header, values)))
 
 def make_and_run(run):
     # replace placeholders with values from the run dictionary

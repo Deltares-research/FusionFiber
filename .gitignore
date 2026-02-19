@@ -4,6 +4,7 @@
 
 # Configuration file, keeping your local path secure
 config.yaml
+*.ffs_gui
 
 # Manual folder
 manual_flexpde/
