@@ -18,27 +18,32 @@ DEFINITIONS
 {groundwater properties}
 	rhow=999																							{Density groundwater} {kg/m3}
 	cw=4186																							{Specific heat groundwater}{J/kg*K}
-	Kf = 0.591      																					{Thermal conductivity of water                 	[W/m/K]}
     kx=1																								{horizontal k value}{m/d}
 {Sediment properties}
 	T0= {temperature}			 																			{average background temperature at T=0}
     inflowTemp=T0
-	n = 0.41																								{porositiy}
+	n = {porosity}																								{porositiy}
 	rhos = 2650 																						{Density sediment} {kg/m3}
 	cs=830																								{Specific heat sediment}{J/kg*K}
-	Ks = 2.301169      																			{Thermal conductivity of solid particles   [W/m/K]} {fitted so that Kb=1.6 W/m/K}
 
 {Combined properties}
-	cb=n*rhow*cw+(1-n)*rhos*cs														{Combined volumetric specific heat}{J/{m**3*K}}
-	Kb=	(n*Kf)+((1-n)*Ks) 																	{Combined thermal conductivity}{J/{m*sec*K}}
+	cb=n*rhow*cw+(1-n)*rhos*cs														{Combined volumetric specific heat}{J/(m**3*K)}
+	Kb={bulk_conductivity}																	{Bulk conductivity of saturated sediment}
+	
 	qx=(-kx/tday)*dx(head)																	{flux in x direction}
 	qy=(-kx/tday)*dy(head)																	{flux in y direction}
 	q=vector(qx,qy)																				{combined flux}
 	Source=0
 
+{Switch heat cables ON (1) or OFF (0)}
+	Heat1_core = {bool_heat1}												{Switch for heat input in core of heating cable 1}
+	Heat2_core = {bool_heat2}												{Switch for heat input in core of heating cable 2}
+	Heat3_core = {bool_heat3}												{Switch for heat input in core of heating cable 3}
+	Heat4_core = {bool_heat4}												{Switch for heat input in core of heating cable 4}
+
+
 {HEAT INPUT to Cables}
-	Heatin={voltage}												{Voltage for every timestep, will be calculated to heat input}
-	Cableheat = Heatin*{amperage}
+	Voltage={voltage}												{Voltage for every timestep, will be calculated to heat input}
     t_cutoff = {heating_time}										{time till heating turns off}
     t_transition = {buildup_time}											{short transition time from full heat to zero}
 
@@ -94,7 +99,7 @@ DEFINITIONS
 	rhoc_heat_core= 890							{890}							{8920}										{Density of metal wire inside heating cable								[kg/m^3]}
 	Cc_heat_core= 380								{380}							{380}											{Specific heat metal wire inside heating cable							[J/(kg*K)]}
 	R_heat_core= 1.47									{1.47}							{}													{resistance of metal heating wire [ohm/m]}
-	L_heat_core= 64									{20}							{}													{Length of heating cable [m}
+	L_heat_core= {length}							{20}							{}													{Length of heating cable [m}
 {Cable protection}
 !HK	{Rad_heat_mantle=0.0008711}				{0.66 mm}					{nvt}											{Outer radius of heating cable core + wall tickness (0.66 mm) = 0.8711 mm					[m]}
     Rad_heat_mantle=0.000858				{0.66 mm}					{nvt}											{Outer radius of heating cable core + wall tickness (0.66 mm) = 0.8711 mm					[m]}
@@ -133,11 +138,11 @@ DEFINITIONS
 
 {Calculation of  heating by the core of the heating cable}
 	A_heating=pi*Rad_heat_core^2 																			{Cross-sectional area of heating part      										[m^2]}
-	!HK {Q_heating=((Cableheat^2)/(R_heat_core*L_heat_core))/L_heat_core}								{Calculated heat input for the cable}
-	!Q_heating=(1-exp(-t/10))*((Cableheat^2)/(R_heat_core*L_heat_core))/L_heat_core								{Calculated heat input for the cable}
+	!HK {Q_heating=((Voltage^2)/(R_heat_core*L_heat_core))/L_heat_core}								{Calculated heat input for the cable}
+	!Q_heating=(1-exp(-t/10))*((Voltage^2)/(R_heat_core*L_heat_core))/L_heat_core								{Calculated heat input for the cable}
     
     Q_heating = (1 - exp(-t / t_transition)) *
-    					(Cableheat^2 / (R_heat_core * L_heat_core^2)) *
+    					(Voltage^2 / (R_heat_core * L_heat_core^2)) *
     					(1 / (1 + exp(min((t - t_cutoff) / t_transition, 690))))
 
 {----------------------------------------Cable orientation 1 / location A3}
@@ -387,7 +392,11 @@ BOUNDARIES
 		LINE TO CLOSE
 
 	REGION 31 "Heat1 core"
-		source=(Q_heating)/A_heating,Kb = Kc_heat_core, rhos=rhoc_heat_core, Cs=Cc_heat_core, Kx=0.000000001, n=0 
+		SOURCE = IF(Heat1_core=1, Q_heating/A_heating, 0)
+		Kb = Kc_heat_core
+		rhos=rhoc_heat_core
+		Cs=Cc_heat_core, Kx=0.000000001
+		n=0 
 		START(Locx_A3_heat1-Rad_heat_core, Locy_A3_heat1)
 		ARC(CENTER=Locx_A3_heat1,Locy_A3_heat1) ANGLE=360
 		LINE TO CLOSE
@@ -400,7 +409,7 @@ BOUNDARIES
 		LINE TO CLOSE
 
 	REGION 33 "Heat2 core"
-		source=(Q_heating)/A_heating,Kb = Kc_heat_core, rhos=rhoc_heat_core, Cs=Cc_heat_core, Kx=0.000000001, n=0 
+		SOURCE = IF(Heat2_core, Q_heating/A_heating, 0), Kb = Kc_heat_core, rhos=rhoc_heat_core, Cs=Cc_heat_core, Kx=0.000000001, n=0 
 		START(Locx_A3_heat2-Rad_heat_core, Locy_A3_heat2)
 		ARC(CENTER=Locx_A3_heat2,Locy_A3_heat2) ANGLE=360
 		LINE TO CLOSE
@@ -413,7 +422,7 @@ BOUNDARIES
 		LINE TO CLOSE
 
 	REGION 35 "Heat3 core"
-		source=(Q_heating)/A_heating,Kb = Kc_heat_core, rhos=rhoc_heat_core, Cs=Cc_heat_core, Kx=0.000000001, n=0 
+		SOURCE = IF(Heat3_core, Q_heating/A_heating, 0), Kb = Kc_heat_core, rhos=rhoc_heat_core, Cs=Cc_heat_core, Kx=0.000000001, n=0 
 		START(Locx_A3_heat3-Rad_heat_core, Locy_A3_heat3)
 		ARC(CENTER=Locx_A3_heat3,Locy_A3_heat3) ANGLE=360
 		LINE TO CLOSE
@@ -426,7 +435,7 @@ BOUNDARIES
 		LINE TO CLOSE
 
 	REGION 37 "Heat4 core"
-		source=(Q_heating)/A_heating, Kb = Kc_heat_core, rhos=rhoc_heat_core, Cs=Cc_heat_core, Kx=0.000000001, n=0 
+		SOURCE = IF(Heat4_core, Q_heating/A_heating, 0), Kb = Kc_heat_core, rhos=rhoc_heat_core, Cs=Cc_heat_core, Kx=0.000000001, n=0 
 		START(Locx_A3_heat4-Rad_heat_core, Locy_A3_heat4)
 		ARC(CENTER=Locx_A3_heat4,Locy_A3_heat4) ANGLE=360
 		LINE TO CLOSE

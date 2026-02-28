@@ -126,7 +126,39 @@ def read_batch_variables(file_path):
     darcy_flux, temperature, voltage, amperage, heating_time, buildup_time,
     rotate, etc.
     """
-    batch_df = pd.read_csv(file_path, comment='#', skipinitialspace=True)
+    with open(file_path, 'r') as f:
+        lines = f.readlines()
+
+    header = None
+    rows = []
+
+    for raw_line in lines:
+        line = raw_line.strip()
+        if not line:
+            continue
+
+        if header is None:
+            header = [col.strip() for col in line.split(',')]
+            continue
+
+        # Keep real run rows even if disabled for FlexPDE with leading '#'
+        # (e.g., '#gw01,...'), but skip descriptive comment lines.
+        if line.startswith('#'):
+            if len(line) > 1 and line[1:3].lower() == 'gw':
+                line = line[1:].strip()
+            else:
+                continue
+
+        values = [val.split('#', 1)[0].strip() for val in line.split(',')]
+        if len(values) < len(header):
+            continue
+
+        rows.append(values[:len(header)])
+
+    if header is None:
+        raise ValueError(f"No header found in batch variable file: {file_path}")
+
+    batch_df = pd.DataFrame(rows, columns=header)
     batch_df['id'] = batch_df['id'].astype(str).str.strip()
     batch_df = batch_df.rename(columns={'id': 'gw'})
     return batch_df

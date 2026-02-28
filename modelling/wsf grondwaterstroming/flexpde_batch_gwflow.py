@@ -9,7 +9,7 @@ batch_variable_file = SCRIPT_DIR / "batch_variables_gwflow.txt"
 
 # FlexPDE configuration
 FLEXPDE_EXE = "FlexPDE8n"
-THREADS = 8
+THREADS = 24
 timeout = 1800
 
 # Read the template

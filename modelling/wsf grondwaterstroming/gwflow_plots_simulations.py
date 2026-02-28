@@ -21,6 +21,7 @@ import matplotlib.pyplot as plt
 import pickle
 import math
 import numpy as np
+import difflib
 from pathlib import Path
 
 # Setup and data loading
@@ -34,26 +35,34 @@ with open(pickle_file, 'rb') as f:
 	data = pickle.load(f)
 
 # Selection settings
-GW_IDS = ['gw100', 'gw101', 'gw102', 'gw103', 'gw104', 'gw105', 'gw106', 'gw107']
-#GW_IDS = [f"gw{i:02d}" for i in range(1, 52)]
+#GW_IDS = ['gw301', 'gw302', 'gw303', 'gw304', 'gw305']
+GW_IDS = [f"gw{i:02d}" for i in range(401, 421)]
 
 # Plot settings
 LINE_WIDTH = 1.5  # line thickness for plotted curves
-cmap = 'plasma'
-legend_label = 'voltage'  # column in data used for curve labels	
-legend_title = 'Voltage (V)'  # title for the legend
-legend_unit = 'V'  # unit appended to numeric labels in legend
+cmap = 'viridis'  # matplotlib colormap name for curve colors
+legend_label = 'darcy_flux'  # column in data used for curve labels	
+legend_title = 'Darcy Flow (m/d)'  # title for the legend
+legend_unit = 'm/d'  # unit appended to numeric labels in legend
 
 #outfile_basename = 'Darcy_flow_core_average'
-outfile_basename = 'Power_no_flow'
+outfile_basename = 'Darcy_flow_core_average_gw401-420'
 
-required_columns = {'gw', 'Time_min', 'Core_average'}
+required_columns = {'gw', 'Time_min', 'bulk_conductivity'}
 missing_columns = required_columns - set(data.columns)
 if missing_columns:
 	raise ValueError(f"Missing required columns in pickle data: {sorted(missing_columns)}")
 
 all_gw = sorted(data['gw'].dropna().astype(str).unique())
 selected_gw = [gw for gw in GW_IDS if gw in all_gw]
+missing_gw = [gw for gw in GW_IDS if gw not in all_gw]
+
+if missing_gw:
+	print(f"Warning: {len(missing_gw)} requested GW IDs not found in data: {', '.join(missing_gw)}")
+	for gw in missing_gw:
+		suggestions = difflib.get_close_matches(gw, all_gw, n=3, cutoff=0.4)
+		if suggestions:
+			print(f"  - {gw} -> did you mean: {', '.join(suggestions)}?")
 if not selected_gw:
 	raise ValueError('No gw IDs selected for plotting.')
 
@@ -158,8 +167,15 @@ def create_plot(
 		color_values = np.linspace(cmap_start, cmap_end, len(plot_data))
 
 	fig, ax = plt.subplots()
+	plotted_curves = 0
+	skipped_missing_label = []
 	for (gw_name, gw_data), color_value in zip(plot_data, color_values):
 		label_value = gw_data[label_column].iloc[0]
+		if (not isinstance(label_value, (str, bytes)) and np.isnan(label_value)) or (
+			isinstance(label_value, str) and not label_value.strip()
+		):
+			skipped_missing_label.append(gw_name)
+			continue
 		label = format_legend_label(label_value, unit=label_unit, decimals=label_decimals)
 		line_color = cmap(color_value)
 
@@ -175,8 +191,16 @@ def create_plot(
 			if x_values.empty:
 				continue
 			ax.semilogx(x_values, y_values, alpha=0.9, label=label, color=line_color)
+			plotted_curves += 1
 		else:
 			ax.plot(x_values, gw_data['Core_average'], alpha=0.9, label=label, color=line_color)
+			plotted_curves += 1
+
+	if plotted_curves == 0:
+		raise ValueError(
+			f"No curves left to plot. All selected GW runs are missing '{label_column}' values "
+			"(often caused by commenting out rows in batch_variables_gwflow.txt)."
+		)
 
 	ax.set_title('Temperature Evolution (Core_average)', fontweight='bold')
 	ax.set_ylabel('Temperature (°C)')
@@ -196,7 +220,7 @@ def create_plot(
 		if time_start is not None or time_end is not None:
 			ax.set_xlim(left=time_start, right=time_end)
 
-	legend_entries = len(selected_gw)
+	legend_entries = plotted_curves
 	legend_cols = min(10, max(5, math.ceil(legend_entries / 6)))
 	legend_rows = math.ceil(legend_entries / legend_cols)
 	fig.subplots_adjust(bottom=min(0.5, 0.12 + 0.05 * legend_rows))
@@ -213,6 +237,11 @@ def create_plot(
 	output_path = plots_dir / file_name
 	plt.savefig(output_path, bbox_inches='tight')
 	plt.close(fig)
+	if skipped_missing_label:
+		print(
+			f"Skipped {len(skipped_missing_label)} GW runs with missing '{label_column}' values: "
+			f"{', '.join(skipped_missing_label)}"
+		)
 	return output_path
 
 
