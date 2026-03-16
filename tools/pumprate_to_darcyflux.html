@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Darcy Flux – Derivation</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
+<style>
+  body { background:white; font-family:sans-serif; max-width:900px; margin:40px auto; }
+  h1 { font-size:1.8em; }
+  p, li { font-size:1.1em; line-height:1.5; }
+  li { margin: 6px 0; }
+  .bullet-row { display:flex; align-items:center; gap:10px; }
+  .math-inline { white-space:nowrap; }
+  .eq { font-size:1.15em; }
+  .eq.final { font-size:1.3em; font-weight:bold; }
+</style>
+
+</head>
+<body>
+<h1>Darcy Flux Around a Well – Full Derivation</h1>
+<p>This calculation determines the radial Darcy flux by dividing the volumetric flow rate by the cylindrical flow area through which groundwater flows. As the radius increases, the cylindrical flow area becomes larger, causing the Darcy flux to decrease with distance.</p>
+<h2>Derivation</h2>
+<p>The volumetric flow rate is:</p>
+<p class="eq">$$ Q\,[\text{m}^3/\text{day}] $$</p>
+<p>The water flows through a cylindrical surface at radius:</p>
+<p class="eq">$$ r = r_w + d $$</p>
+<p>where:</p>
+<ul>
+  <li><span class="math-inline">$r_w$</span> is the well screen radius [m]</li>
+  <li><span class="math-inline">$d$</span> is the distance from the well screen surface [m]</li>
+</ul>
+<p>The cylindrical flow area is:</p>
+<p class="eq">$$ A(r) = 2\pi (r_w + d)\, b $$</p>
+<p>Darcy flux is:</p>
+<p class="eq">$$ q(d) = \frac{Q}{A(r)} $$</p>
+<p>Final equation:</p>
+<p class="eq final">$$ q(d) = \frac{Q}{2\pi (r_w + d)\, b} $$</p>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  if (typeof renderMathInElement === 'function') {
+    renderMathInElement(document.body, {
+      delimiters: [
+        {left: "$$", right: "$$", display: true},
+        {left: "\\[", right: "\\]", display: true},
+        {left: "$", right: "$", display: false},
+        {left: "\\(", right: "\\)", display: false}
+      ],
+      throwOnError: false
+    });
+  }
+});
+</script>
+</body>
+</html>
