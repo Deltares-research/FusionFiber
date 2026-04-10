@@ -22,17 +22,17 @@ import numpy as np
 
 
 # -------------------------- User settings --------------------------
-GW_IDS = ['gw100', 'gw101', 'gw102', 'gw103', 'gw104', 'gw105', 'gw106', 'gw107']
+GW_IDS = ['gw300', 'gw301', 'gw302', 'gw303', 'gw304', 'gw305', 'gw306', 'gw307', 'gw308', 'gw309', 'gw310']
 LINE_WIDTH = 1.5
-CMAP_NAME = 'plasma'
-OUTFILE_BASENAME = 'Power_no_flow'
+CMAP_NAME = 'cividis'
+OUTFILE_BASENAME = 'Thermal_conductivity'
 FIT_LINE_WIDTH = 2.8
 FIT_MARKER_SIZE = 90
 
 # Legend label source
-LEGEND_LABEL_COLUMN = 'voltage'   # e.g. darcy_flux, runtime, temperature, voltage, amperage
-LEGEND_LABEL_TITLE = 'Voltage (V)'
-LEGEND_LABEL_UNIT = 'V'
+LEGEND_LABEL_COLUMN = 'bulk_conductivity'   # e.g. darcy_flux, runtime, temperature, voltage, amperage
+LEGEND_LABEL_TITLE = 'Bulk Conductivity (W/m/K)'
+LEGEND_LABEL_UNIT = 'W/m/K'
 LEGEND_LABEL_DECIMALS = 1
 
 # Fit interval in seconds (user input)
@@ -164,12 +164,12 @@ def main():
 	ax.set_xlim(left=PLOT_TIME_START_SEC, right=PLOT_TIME_END_SEC)
 
 	legend_entries = len(selected_gw)
-	legend_cols = min(8, max(2, math.ceil(legend_entries / 6)))
+	legend_cols = min(10, max(5, math.ceil(legend_entries / 6)))
 	legend_rows = math.ceil(legend_entries / legend_cols)
-	fig.subplots_adjust(bottom=min(0.4, 0.12 + 0.05 * legend_rows))
+	fig.subplots_adjust(bottom=min(0.5, 0.12 + 0.05 * legend_rows))
 	ax.legend(
 		loc='upper center',
-		bbox_to_anchor=(0.5, -0.14),
+		bbox_to_anchor=(0.5, -0.16),
 		ncol=legend_cols,
 		title=LEGEND_LABEL_TITLE,
 		frameon=True,

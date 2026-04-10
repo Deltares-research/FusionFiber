@@ -35,18 +35,18 @@ with open(pickle_file, 'rb') as f:
 	data = pickle.load(f)
 
 # Selection settings
-#GW_IDS = ['gw301', 'gw302', 'gw303', 'gw304', 'gw305']
-GW_IDS = [f"gw{i:02d}" for i in range(401, 421)]
+GW_IDS = ['gw300', 'gw301', 'gw302', 'gw303', 'gw304', 'gw305', 'gw306', 'gw307', 'gw308', 'gw309', 'gw310']
+# GW_IDS = [f"gw{i:02d}" for i in range(100, 108)]
 
 # Plot settings
 LINE_WIDTH = 1.5  # line thickness for plotted curves
-cmap = 'viridis'  # matplotlib colormap name for curve colors
-legend_label = 'darcy_flux'  # column in data used for curve labels	
-legend_title = 'Darcy Flow (m/d)'  # title for the legend
-legend_unit = 'm/d'  # unit appended to numeric labels in legend
+cmap = 'cividis'  # matplotlib colormap name for curve colors
+legend_label = 'bulk_conductivity'  # column in data used for curve labels	
+legend_title = 'Bulk Conductivity (W/m/K)'  # title for the legend
+legend_unit = 'W/m/K'  # unit appended to numeric labels in legend
 
 #outfile_basename = 'Darcy_flow_core_average'
-outfile_basename = 'Darcy_flow_core_average_gw401-420'
+outfile_basename = 'Thermal_conductivity'
 
 required_columns = {'gw', 'Time_min', 'bulk_conductivity'}
 missing_columns = required_columns - set(data.columns)
