@@ -17,3 +17,9 @@ modelling/wsf grondwaterstroming/*_output/
 data/cores/
 data/fluxes/
 data/depths/    
+
+# generated ATES artifacts (large/local)
+*.pickle
+!data/all_experiment_data.pickle
+!data/WKO_K1_active3.pickle
+data/*.png
