@@ -16,6 +16,10 @@ channels = ["conda-forge"]
 platforms = ["win-64", "linux-64", "osx-64", "osx-arm64"]
 
 [tool.pixi.tasks]
+ates-research = { cmd = "python data/ates_action_research.py", description = "Read, process and custom plotting from raw ATES data: processed data can be loaded to the ATES-app" }
+ates-app = { cmd = "python ates-app/ates_qc_interactive_viewer.py", description = "Run the interactive ATES QC viewer using the default combined pickle path" }
+ates-app-nobrowser = { cmd = "python ates-app/ates_qc_interactive_viewer.py --no-browser", description = "Run the interactive ATES QC viewer without auto-opening a browser tab" }
+compile-check-ates-app = { cmd = "python -m py_compile ates-app/ates_qc_interactive_viewer.py", description = "Compile-check the ATES QC viewer script" }
 
 [tool.pixi.dependencies]
 pandas = ">=2.3.3,<3"
@@ -27,3 +31,5 @@ ipykernel = ">=7.0.1,<8"
 jinja2 = ">=3.1.6,<4"
 matplotlib = ">=3.10.7,<4"
 ffmpeg = ">=8.0.0,<9"
+dash = ">=4.1.0,<5"
+plotly = ">=6.6.0,<7"

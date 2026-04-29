@@ -41,6 +41,50 @@ To reproduce the data results (50 plots) you can run the main script in the data
 pixi run python data/diameter_nozzle_fiber_experiment.py
 ```
 
+## ATES flush workflow
+
+The ATES flush workflow has two parts: generating static analysis plots and opening the interactive QC viewer.
+
+### 1. Run the ATES research script
+
+This script lives in `data/ates_action_research.py` and is configured directly in the file.
+
+Run it with:
+```
+pixi run ates-research
+```
+
+What it does:
+- Builds the combined channel pickle automatically if it does not exist yet.
+- Summarizes peak temperatures over the selected measurement interval.
+- Runs in one of two modes:
+  - Midpoint mode: plots temperature over time at the midpoint of each selected location.
+  - QC mode: when `QC_TIMESTAMP` is set, it creates a QC imshow, a vertical profile at the selected timestamp, and a time series at `QC_POSITION` when that value is set.
+
+Main settings inside the script:
+- `PLOT_LOCATIONS`: list of location keys to include.
+- `QC_TIMESTAMP`: set to `None` for midpoint mode, or to a timestamp string for QC mode.
+- `QC_POSITION`: optional fiber position for an extra QC time-series plot.
+
+Output files are written to the `data` folder.
+
+### 2. Open the interactive ATES QC viewer
+
+Run the viewer without opening extra browser tabs:
+```
+pixi run ates-app-nobrowser
+```
+
+Or run the normal browser-opening task:
+```
+pixi run ates-app
+```
+
+Quick validation after editing the viewer script:
+```
+pixi run compile-ates-app
+```
+
 You can also reproduce the modelling data, but this requires a FlexPDE installation on your machine,  
 which is a proprietary licensed software. But if you have this and if the executable is in your PATH  environment variable, try:
 

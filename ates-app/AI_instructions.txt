@@ -1,0 +1,55 @@
+AI notes from ATES QC viewer session
+
+User preferences
+- Keep iterating quickly on visual details and exact alignment.
+- Prefer concise, direct changes over broad redesigns.
+- Keep UI dark with exact requested labels/text.
+- For copied scripts, user prefers simplified and minimal code paths.
+- Always use Pixi commands/tasks for run and validation.
+
+Runbook to resume after restart
+- Compile check after each script edit:
+  1) pixi run compile-ates-app
+- Run app without opening extra tabs:
+  1) pixi run ates-app-nobrowser
+- Normal app run (if needed):
+  1) pixi run ates-app
+
+Stale process and port hygiene
+- Confirm the process serving port 8050 before trusting browser measurements.
+- Stale process symptom: browser UI does not match current file content.
+- Reliable stale-process check:
+  1) Get-NetTCPConnection -LocalPort 8050 -State Listen
+  2) Get-CimInstance Win32_Process -Filter "ProcessId = <pid>"
+  3) Stop stale python process directly if needed.
+- Keep only one live test tab during alignment work.
+
+Current project/task state
+- Main app script location: ates-app/ates_qc_interactive_viewer.py
+- Default pickle path in script points to: data/ates_action_flush_experiment.pickle
+- Pixi tasks in pyproject.toml:
+  - ates-app
+  - ates-app-nobrowser
+  - compile-ates-app
+
+Current UI state (latest)
+- Header row: title and both dropdowns are adjacent on the left (not pushed to far right).
+- Additional spacing is reintroduced between header and imshow for cleaner layout.
+- Imshow and vertical sliders were increased in height to use extra bottom space:
+  - IMSHOW_HEIGHT_PX = 620
+  - FIBER_SLIDER_HEIGHT_PX = 548
+  - TEMP_SLIDER_HEIGHT_PX = 505
+- Top/bottom margins and outer padding were tightened to recover vertical room.
+
+Current logo state (latest)
+- Deltares logo:
+  - Uses DELTARES-logo.png
+  - Fixed overlay at top-right
+  - Reduced size to avoid overlap with right plot title.
+- FusionFiber logo:
+  - Uses FusionFiber_logo.png
+  - Is inside app layout, below the fiber profile plot (right column), not fixed to viewport.
+
+Implemented behavior details to retain
+- Fiber slider uses negated value mapping for intuitive interaction with reversed y-axis.
+- Heartbeat/shutdown lifecycle routes are active and include request-log filtering to suppress noise for /_heartbeat and /_shutdown.
