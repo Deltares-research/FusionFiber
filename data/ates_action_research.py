@@ -13,6 +13,7 @@ Modes:
 The script builds the combined channel pickle automatically when needed.
 """
 
+import logging
 from pathlib import Path
 from dataclasses import dataclass
 
@@ -37,6 +38,23 @@ class LocationSpec:
     channel_name: str
 
 
+@dataclass(frozen=True)
+class QCContext:
+    """Container for QC interval data and metadata."""
+    location_key: str
+    interval_df: pd.DataFrame
+    channel_name: str
+    start_pos: float
+    end_pos: float
+    distances: np.ndarray
+
+# Dataset selection: use "data_dir_ates_afterspui" for after-SPUI only, or
+# "data_dir_ates_spui_en_afterspui" to include both SPUI and after-SPUI data
+CONFIG_KEY_DATA_DIR = "data_dir_ates_spui_en_afterspui"
+
+# Pickle compression: "float32" (default, full precision) or "float16" (smaller file)
+PICKLE_DTYPE = "float32"
+
 # Format: location_key -> LocationSpec(start_m, end_m, reverse_direction, channel_name)
 LOCATIONS = {
     "a-ch1": LocationSpec(529.6, 549.6, False, "channel 1"),
@@ -57,11 +75,10 @@ LOCATIONS = {
     "h-ch4": LocationSpec(944.8, 964.8, True, "channel 4"),
 }
 
-PLOT_LOCATIONS = ["a-ch2"]
+PLOT_LOCATIONS = ["a-ch1"]
 QC_TIMESTAMP = "2026-04-16 13:10:00"
-QC_POSITION = 530
+QC_POSITION = 546.5
 
-CONFIG_KEY_DATA_DIR = "data_dir_ates_afterspui"
 
 DATA_DIR = Path(__file__).parent
 REPO_DIR = DATA_DIR.parent
@@ -97,42 +114,37 @@ def _channel_df(all_channel_data: dict, channel_name: str) -> pd.DataFrame:
         raise KeyError(f"Missing channel dataframe for: {channel_name}") from exc
 
 
-def _single_qc_location() -> str:
-    if len(PLOT_LOCATIONS) != 1:
-        raise ValueError("QC mode requires exactly one location in PLOT_LOCATIONS.")
-    return PLOT_LOCATIONS[0]
-
-
-def _interval_data(all_channel_data: dict, location_key: str) -> tuple[pd.DataFrame, str, float, float]:
+def _prepare_qc_context(all_channel_data: dict, location_key: str) -> QCContext:
+    """Extract and validate QC context for a location."""
     if location_key not in LOCATIONS:
         raise KeyError(f"Unknown location key: {location_key}")
 
     spec = LOCATIONS[location_key]
-    start_pos = spec.start_m
-    end_pos = spec.end_m
-    channel_name = spec.channel_name
-    df = _channel_df(all_channel_data, channel_name)
-
-    interval_min = min(start_pos, end_pos)
-    interval_max = max(start_pos, end_pos)
+    df = _channel_df(all_channel_data, spec.channel_name)
+    
+    interval_min, interval_max = min(spec.start_m, spec.end_m), max(spec.start_m, spec.end_m)
     interval_df = df.loc[:, (df.columns >= interval_min) & (df.columns <= interval_max)]
+    
     if interval_df.empty:
         raise ValueError(
-            f"No distance columns found for {location_key} within {interval_min} to {interval_max} m"
+            f"No distance columns found for {location_key} in [{interval_min:.2f}, {interval_max:.2f}] m"
         )
-
-    return interval_df, channel_name, start_pos, end_pos
-
-
-def _format_interval_token(value: float) -> str:
-    return f"{float(value):.2f}".replace(".", "p")
+    
+    return QCContext(
+        location_key=location_key,
+        interval_df=interval_df,
+        channel_name=spec.channel_name,
+        start_pos=spec.start_m,
+        end_pos=spec.end_m,
+        distances=interval_df.columns.to_numpy(dtype=float),
+    )
 
 
 def _qc_output_file(prefix: str, location_key: str, start_pos: float, end_pos: float) -> Path:
-    return DATA_DIR / (
-        f"{prefix}_{location_key}_start-{_format_interval_token(start_pos)}"
-        f"_end-{_format_interval_token(end_pos)}.png"
-    )
+    """Generate output path for QC plots."""
+    start_token = f"{start_pos:.2f}".replace(".", "p")
+    end_token = f"{end_pos:.2f}".replace(".", "p")
+    return DATA_DIR / f"{prefix}_{location_key}_start-{start_token}_end-{end_token}.png"
 
 
 def _nearest_timestamp(index: pd.DatetimeIndex, timestamp: str) -> tuple[int, pd.Timestamp]:
@@ -152,109 +164,94 @@ def _save_figure(fig: plt.Figure, output_file: Path, message: str) -> None:
     print(f"Saved {message}: {output_file}")
 
 
-def plot_qc_position_profile(all_channel_data: dict, qc_position: float) -> None:
-    """Plot temperature over time at one fiber distance within the QC interval."""
-    location_key = _single_qc_location()
-    interval_df, channel_name, start_pos, end_pos = _interval_data(all_channel_data, location_key)
-
-    distances = interval_df.columns.to_numpy(dtype=float)
-    if not (distances.min() <= qc_position <= distances.max()):
+def plot_qc_position_profile(ctx: QCContext, qc_position: float) -> None:
+    """Plot temperature over time at one fiber distance."""
+    if not (ctx.distances.min() <= qc_position <= ctx.distances.max()):
         raise ValueError(
-            f"QC_POSITION {qc_position} m is outside the interval "
-            f"[{distances.min():.2f}, {distances.max():.2f}] m for {location_key}."
+            f"QC_POSITION {qc_position} m outside [{ctx.distances.min():.2f}, {ctx.distances.max():.2f}] m"
         )
 
-    nearest_dist_idx = int(np.abs(distances - qc_position).argmin())
-    actual_distance = float(distances[nearest_dist_idx])
-    series = interval_df.iloc[:, nearest_dist_idx]
+    nearest_idx = int(np.abs(ctx.distances - qc_position).argmin())
+    actual_dist = float(ctx.distances[nearest_idx])
+    series = ctx.interval_df.iloc[:, nearest_idx]
 
     fig, ax = plt.subplots(figsize=(12, 6), dpi=200)
     ax.plot(_minutes_from_start(series.index), series.values, alpha=0.8)
     ax.set_title(
-        f"QC Position Profile - {location_key} ({channel_name})\n"
-        f"Requested: {qc_position} m | Nearest in data: {actual_distance:.3f} m"
+        f"QC Position Profile - {ctx.location_key} ({ctx.channel_name})\n"
+        f"Requested: {qc_position} m | Nearest: {actual_dist:.3f} m"
     )
     ax.set_xlabel("Time (minutes)")
     ax.set_ylabel("Temperature (degC)")
     ax.grid(True, alpha=0.3)
 
-    output_file = _qc_output_file(
-        f"qc_position-{_format_interval_token(qc_position)}", location_key, start_pos, end_pos
-    )
+    pos_token = f"{qc_position:.2f}".replace(".", "p")
+    output_file = _qc_output_file(f"qc_position-{pos_token}", ctx.location_key, ctx.start_pos, ctx.end_pos)
     _save_figure(fig, output_file, "QC position profile")
 
 
-def plot_qc_imshow(all_channel_data: dict, qc_timestamp: str, qc_position: float | None) -> None:
-    """Plot temperature as an imshow for a single QC interval."""
-    location_key = _single_qc_location()
-    interval_df, channel_name, start_pos, end_pos = _interval_data(all_channel_data, location_key)
-    image_data = interval_df.to_numpy(copy=False).T
-    _, nearest_ts = _nearest_timestamp(interval_df.index, qc_timestamp)
-
-    times = mdates.date2num(interval_df.index.to_pydatetime())
-    distances = interval_df.columns.to_numpy(dtype=float)
-
+def plot_qc_imshow(ctx: QCContext, qc_timestamp: str, qc_position: float | None) -> None:
+    """Plot temperature heatmap for a QC interval."""
+    image_data = ctx.interval_df.to_numpy(copy=False).T
+    nearest_idx, nearest_ts = _nearest_timestamp(ctx.interval_df.index, qc_timestamp)
+    
+    times = mdates.date2num(ctx.interval_df.index.to_pydatetime())
+    
     print(
-        "QC imshow data window: "
-        f"start={interval_df.index[0]}, end={interval_df.index[-1]}, "
-        f"n_times={interval_df.shape[0]}, n_positions={interval_df.shape[1]}"
+        f"QC imshow: {ctx.location_key} ({ctx.channel_name})\n"
+        f"  Time: {ctx.interval_df.index[0]} to {ctx.interval_df.index[-1]} "
+        f"({ctx.interval_df.shape[0]} samples)\n"
+        f"  Distance: {ctx.distances.min():.2f} to {ctx.distances.max():.2f} m "
+        f"({ctx.interval_df.shape[1]} positions)\n"
+        f"  Image: {image_data.shape}"
     )
-    print(f"QC imshow image shape (rows, cols): {image_data.shape}")
 
     fig, ax = plt.subplots(figsize=(12, 6), dpi=200)
-    image = ax.imshow(
-        image_data,
-        cmap="plasma",
-        aspect="auto",
-        origin="upper",
-        extent=[times[0], times[-1], distances.max(), distances.min()],
+    im = ax.imshow(
+        image_data, cmap="plasma", aspect="auto", origin="upper",
+        extent=[times[0], times[-1], ctx.distances.max(), ctx.distances.min()],
     )
-    ax.axvline(mdates.date2num(nearest_ts.to_pydatetime()), color="white", linestyle="--", linewidth=1.2, alpha=0.9)
-
+    ax.axvline(mdates.date2num(nearest_ts.to_pydatetime()), color="white", linestyle="--", lw=1.2, alpha=0.9)
+    
     if qc_position is not None:
-        if distances.min() <= qc_position <= distances.max():
-            ax.axhline(qc_position, color="white", linestyle="--", linewidth=1.2, alpha=0.9)
-        else:
-            print(
-                f"Warning: QC_POSITION {qc_position} m is outside interval "
-                f"[{distances.min():.2f}, {distances.max():.2f}] m, skipping line."
-            )
+        if ctx.distances.min() <= qc_position <= ctx.distances.max():
+            ax.axhline(qc_position, color="white", linestyle="--", lw=1.2, alpha=0.9)
 
-    ax.set_title(f"QC Imshow - {location_key} ({channel_name})")
+    ax.set_title(f"QC Imshow - {ctx.location_key} ({ctx.channel_name})")
     ax.set_xlabel("Time")
     ax.set_ylabel("Fiber length (m)")
     ax.xaxis_date()
     ax.xaxis.set_major_formatter(mdates.DateFormatter("%Y-%m-%d\n%H:%M:%S"))
     fig.autofmt_xdate(rotation=0)
-    fig.colorbar(image, ax=ax).set_label("Temperature (degC)")
+    fig.colorbar(im, ax=ax).set_label("Temperature (degC)")
+    
+    _save_figure(fig, _qc_output_file("qc_imshow", ctx.location_key, ctx.start_pos, ctx.end_pos), "QC imshow")
 
-    output_file = _qc_output_file("qc_imshow", location_key, start_pos, end_pos)
-    _save_figure(fig, output_file, "QC imshow plot")
 
-
-def plot_qc_timestamp_profile(all_channel_data: dict, qc_timestamp: str) -> None:
-    """Plot the temperature profile across fiber distance at one QC timestamp."""
-    location_key = _single_qc_location()
-    interval_df, channel_name, start_pos, end_pos = _interval_data(all_channel_data, location_key)
-    nearest_idx, nearest_ts = _nearest_timestamp(interval_df.index, qc_timestamp)
-    profile = interval_df.iloc[nearest_idx, :]
+def plot_qc_timestamp_profile(ctx: QCContext, qc_timestamp: str) -> None:
+    """Plot temperature profile across fiber distance at a QC timestamp."""
+    nearest_idx, nearest_ts = _nearest_timestamp(ctx.interval_df.index, qc_timestamp)
+    profile = ctx.interval_df.iloc[nearest_idx, :]
 
     fig, ax = plt.subplots(figsize=(12, 6), dpi=200)
     ax.plot(profile.index.to_numpy(dtype=float), profile.values, alpha=0.8)
-    ax.set_title(f"QC Timestamp Profile - {location_key} ({channel_name})\nNearest timestamp: {nearest_ts}")
+    ax.set_title(f"QC Timestamp Profile - {ctx.location_key} ({ctx.channel_name})\nNearest: {nearest_ts}")
     ax.set_xlabel("Distance along fiber (m)")
     ax.set_ylabel("Temperature (degC)")
     ax.grid(True, alpha=0.3)
 
-    output_file = _qc_output_file("qc_profile", location_key, start_pos, end_pos)
-    _save_figure(fig, output_file, "QC profile plot")
+    _save_figure(fig, _qc_output_file("qc_profile", ctx.location_key, ctx.start_pos, ctx.end_pos), "QC profile")
 
 
-def plot_midpoint_profiles(all_channel_data: dict) -> None:
+def plot_midpoint_profiles(all_channel_data: dict, plot_locations: list[str]) -> None:
     """Plot temperature over time at the midpoint of each selected location."""
+    if not plot_locations:
+        logging.warning("No valid plot locations available for midpoint mode; skipping midpoint plot.")
+        return
+
     fig, ax = plt.subplots(figsize=(12, 6), dpi=200)
 
-    for location_key in PLOT_LOCATIONS:
+    for location_key in plot_locations:
         if location_key not in LOCATIONS:
             raise KeyError(f"Unknown location key in PLOT_LOCATIONS: {location_key}")
 
@@ -279,47 +276,76 @@ def plot_midpoint_profiles(all_channel_data: dict) -> None:
 
 
 def _selected_measurement_bounds() -> tuple[float, float]:
-    selected_starts = [LOCATIONS[key].start_m for key in PLOT_LOCATIONS]
-    selected_ends = [LOCATIONS[key].end_m for key in PLOT_LOCATIONS]
-    return min(min(selected_starts), min(selected_ends)), max(max(selected_starts), max(selected_ends))
-
-
-def _locations_for_loader() -> dict[str, list[object]]:
-    """Return legacy positional format required by summarize_peak_temperatures()."""
-    return {
-        key: [spec.start_m, spec.end_m, spec.reverse_direction, spec.channel_name]
-        for key, spec in LOCATIONS.items()
-    }
+    """Get min/max positions across all selected plot locations."""
+    starts = [LOCATIONS[key].start_m for key in PLOT_LOCATIONS]
+    ends = [LOCATIONS[key].end_m for key in PLOT_LOCATIONS]
+    return min(min(starts), min(ends)), max(max(starts), max(ends))
 
 
 def main() -> None:
+    # Setup and load data
     base_dir = _read_config_dir(CONFIG_KEY_DATA_DIR)
     pickle_file = _pickle_file_from_base_dir(base_dir)
 
     if not pickle_file.exists():
         channel_names = sorted({spec.channel_name for spec in LOCATIONS.values()})
-        build_combined_channel_pickle(base_dir, channel_names, pickle_file, use_multiprocessing=True)
+        dtype = np.dtype(PICKLE_DTYPE) if isinstance(PICKLE_DTYPE, str) else PICKLE_DTYPE
+        build_combined_channel_pickle(base_dir, channel_names, pickle_file, use_multiprocessing=True, dtype=dtype)
 
     all_channel_data = load_pickle(str(pickle_file))
+    
+    # Filter locations to only those with available channels
+    available_channels = set(all_channel_data.keys())
+    missing_channels = {spec.channel_name for spec in LOCATIONS.values()} - available_channels
+    if missing_channels:
+        logging.warning(f"Missing channels: {sorted(missing_channels)}. Some locations will be skipped.")
+    
+    filtered_plot_locations = [
+        loc for loc in PLOT_LOCATIONS
+        if loc in LOCATIONS and LOCATIONS[loc].channel_name in available_channels
+    ]
+    if filtered_plot_locations != PLOT_LOCATIONS:
+        skipped = set(PLOT_LOCATIONS) - set(filtered_plot_locations)
+        logging.warning(f"Skipped PLOT_LOCATIONS due to missing channels: {skipped}")
+
+    if not filtered_plot_locations:
+        logging.warning("No valid PLOT_LOCATIONS remain after channel filtering.")
+    
+    # Summarize peak temperatures for all locations
     measurement_start, measurement_end = _selected_measurement_bounds()
-    loader_locations = _locations_for_loader()
-    summarize_peak_temperatures(
-        all_channel_data,
-        PLOT_LOCATIONS,
-        loader_locations,
-        measurement_start,
-        measurement_end,
-    )
+    locations_list = {
+        key: [spec.start_m, spec.end_m, spec.reverse_direction, spec.channel_name]
+        for key, spec in LOCATIONS.items()
+        if spec.channel_name in available_channels
+    }
+    if filtered_plot_locations:
+        summarize_peak_temperatures(
+            all_channel_data,
+            filtered_plot_locations,
+            locations_list,
+            measurement_start,
+            measurement_end,
+        )
+    else:
+        logging.warning("Skipping peak temperature summary because no valid plot locations are available.")
 
+    # Execute mode: QC mode (single location detailed analysis) or midpoint mode (multi-location overview)
     if QC_TIMESTAMP is not None:
-        _single_qc_location()
-        plot_qc_imshow(all_channel_data, QC_TIMESTAMP, QC_POSITION)
-        plot_qc_timestamp_profile(all_channel_data, QC_TIMESTAMP)
+        if len(filtered_plot_locations) == 0:
+            logging.warning("QC mode enabled but no valid PLOT_LOCATIONS are available; skipping QC plots.")
+            return
+        if len(filtered_plot_locations) != 1:
+            raise ValueError(f"QC mode requires exactly one location. Found {len(filtered_plot_locations)}: {filtered_plot_locations}")
+        
+        location_key = filtered_plot_locations[0]
+        ctx = _prepare_qc_context(all_channel_data, location_key)
+        
+        plot_qc_imshow(ctx, QC_TIMESTAMP, QC_POSITION)
+        plot_qc_timestamp_profile(ctx, QC_TIMESTAMP)
         if QC_POSITION is not None:
-            plot_qc_position_profile(all_channel_data, QC_POSITION)
-        return
-
-    plot_midpoint_profiles(all_channel_data)
+            plot_qc_position_profile(ctx, QC_POSITION)
+    else:
+        plot_midpoint_profiles(all_channel_data, filtered_plot_locations)
 
 
 if __name__ == "__main__":

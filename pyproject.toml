@@ -17,12 +17,14 @@ platforms = ["win-64", "linux-64", "osx-64", "osx-arm64"]
 
 [tool.pixi.tasks]
 ates-research = { cmd = "python data/ates_action_research.py", description = "Read, process and custom plotting from raw ATES data: processed data can be loaded to the ATES-app" }
-ates-app = { cmd = "python ates-app/ates_qc_interactive_viewer.py", description = "Run the interactive ATES QC viewer using the default combined pickle path" }
-ates-app-nobrowser = { cmd = "python ates-app/ates_qc_interactive_viewer.py --no-browser", description = "Run the interactive ATES QC viewer without auto-opening a browser tab" }
-compile-check-ates-app = { cmd = "python -m py_compile ates-app/ates_qc_interactive_viewer.py", description = "Compile-check the ATES QC viewer script" }
+ates-app = { cmd = "python ates-app/ates-app.py", description = "Run the interactive ATES QC viewer using the default combined pickle path" }
+ates-app-nobrowser = { cmd = "python ates-app/ates-app.py --no-browser", description = "Run the interactive ATES QC viewer without auto-opening a browser tab" }
+compile-check-ates-app = { cmd = "python -m py_compile ates-app/ates-app.py", description = "Compile-check the ATES QC viewer script" }
+ates-curve-selection = { cmd = "python data/ates_action_select_heat_curves.py", description = "Extract, align, normalize and compare ATES heating curve episodes from DTS data" }
 
 [tool.pixi.dependencies]
 pandas = ">=2.3.3,<3"
+openpyxl = ">=3.1.5,<4"
 numpy = ">=2.3.3,<3"
 xmltodict = ">=1.0.2,<2"
 yaml = ">=0.2.5,<0.3"

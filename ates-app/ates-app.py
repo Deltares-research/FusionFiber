@@ -38,10 +38,12 @@ from dash import Dash, Input, Output, State, ctx, dcc, html
 import plotly.graph_objects as go
 
 #CONFIG_KEY_DATA_DIR = "data_dir_ates"
-#CONFIG_KEY_DATA_DIR = "data_dir_ates_spui"
-CONFIG_KEY_DATA_DIR = "data_dir_ates_afterspui"
+CONFIG_KEY_DATA_DIR = "data_dir_ates_spui_en_afterspui"
+#CONFIG_KEY_DATA_DIR = "data_dir_ates_afterspui"
 
 CONFIG_FILE = Path(__file__).resolve().parent.parent / "config.yaml"
+
+#Depth reference - fiber
 
 
 def _default_pickle_path() -> Path:
@@ -82,6 +84,20 @@ TEMP_SLIDER_HEIGHT_PX = 505
 TEMP_SLIDER_BOTTOM_OFFSET_PX = IMSHOW_HEIGHT_PX - TEMP_SLIDER_TOP_OFFSET_PX - TEMP_SLIDER_HEIGHT_PX
 HEATMAP_TIME_AXIS_LEFT_OFFSET_PX = 81
 HEATMAP_TIME_AXIS_RIGHT_OFFSET_PX = 109
+AXIS_TITLE_FONT_SIZE = 16
+AXIS_TICK_FONT_SIZE = 14
+COLORBAR_TITLE_FONT_SIZE = 15
+COLORBAR_TICK_FONT_SIZE = 13
+PUMP_FILE_GLOB = "Debiet*.xlsx"
+PUMP_SHEET_NAME = "debiet koudebron kb-1"
+PUMP_TIME_COLUMN = "Systeemtijd"
+PUMP_RATE_COLUMN = "Debiet WB-1 m3/h"
+THEME_DARK = "dark"
+THEME_LIGHT = "light"
+TEMP_AXIS_COLOR_DARK = "#636EFA"
+TEMP_AXIS_COLOR_LIGHT = "#3C51C6"
+PUMP_AXIS_COLOR_DARK = "rgb(251,252,191)"
+PUMP_AXIS_COLOR_LIGHT = "rgb(153,110,0)"
 
 CMAP_OPTIONS = ["plasma", "turbo", "inferno", "magma", "viridis", "cividis", "rocket", "mako"]
 
@@ -244,6 +260,90 @@ def _load_combined_pickle(pickle_path: Path) -> dict[str, pd.DataFrame]:
     return channel_dfs
 
 
+def _load_pump_rate_series(search_dir: Path) -> tuple[pd.Series | None, str | None]:
+    def _norm(text: object) -> str:
+        return "".join(ch for ch in str(text).lower() if ch.isalnum())
+
+    def _resolve_sheet_name(excel_file: Path) -> str:
+        xls = pd.ExcelFile(excel_file)
+        wanted = _norm(PUMP_SHEET_NAME)
+        for sheet_name in xls.sheet_names:
+            if _norm(sheet_name) == wanted:
+                return sheet_name
+        for sheet_name in xls.sheet_names:
+            sheet_norm = _norm(sheet_name)
+            if "debiet" in sheet_norm and "koudebron" in sheet_norm and "kb1" in sheet_norm:
+                return sheet_name
+        raise ValueError(f"Worksheet matching '{PUMP_SHEET_NAME}' not found")
+
+    def _resolve_column_name(columns: pd.Index, preferred: str, required_parts: list[str]) -> str | None:
+        col_list = [str(col) for col in columns]
+        preferred_norm = _norm(preferred)
+        for col in col_list:
+            if _norm(col) == preferred_norm:
+                return col
+
+        required_norm = [_norm(part) for part in required_parts]
+        for col in col_list:
+            col_norm = _norm(col)
+            if all(part in col_norm for part in required_norm):
+                return col
+        return None
+
+    pump_files = sorted(
+        search_dir.glob(PUMP_FILE_GLOB),
+        key=lambda path: path.stat().st_mtime,
+        reverse=True,
+    )
+    if not pump_files:
+        msg = f"No pump file found ({PUMP_FILE_GLOB})"
+        logging.warning(
+            "No pump Excel file found with pattern '%s' in %s; continuing without pump curve.",
+            PUMP_FILE_GLOB,
+            search_dir,
+        )
+        return None, msg
+
+    selected_file = pump_files[0]
+    try:
+        resolved_sheet_name = _resolve_sheet_name(selected_file)
+        pump_df = pd.read_excel(selected_file, sheet_name=resolved_sheet_name)
+    except Exception as exc:  # pragma: no cover - depends on external file state
+        msg = f"Pump file read failed: {type(exc).__name__}"
+        logging.warning(
+            "Failed to read pump data from %s (sheet '%s'): %s. Continuing without pump curve.",
+            selected_file,
+            PUMP_SHEET_NAME,
+            exc,
+        )
+        return None, msg
+
+    time_col = _resolve_column_name(pump_df.columns, PUMP_TIME_COLUMN, ["systeemtijd"])
+    rate_col = _resolve_column_name(pump_df.columns, PUMP_RATE_COLUMN, ["debiet", "m3", "h"])
+
+    if time_col is None or rate_col is None:
+        msg = "Pump columns missing"
+        logging.warning(
+            "Pump sheet '%s' in %s is missing required columns '%s' and/or '%s'; continuing without pump curve.",
+            resolved_sheet_name,
+            selected_file,
+            PUMP_TIME_COLUMN,
+            PUMP_RATE_COLUMN,
+        )
+        return None, msg
+
+    timestamps = pd.to_datetime(pump_df[time_col], errors="coerce", dayfirst=True)
+    rates = pd.to_numeric(pump_df[rate_col], errors="coerce")
+    series = pd.Series(rates.values, index=timestamps, name="pump_rate").dropna()
+    if series.empty:
+        msg = "Pump data empty after parsing"
+        logging.warning("Pump data in %s is empty after parsing; continuing without pump curve.", selected_file)
+        return None, msg
+
+    series = series[~series.index.duplicated(keep="last")].sort_index()
+    return series, None
+
+
 def _build_time_marks(ts_index: pd.DatetimeIndex) -> dict[int, dict[str, object]]:
     n = len(ts_index)
     if n <= 1:
@@ -302,6 +402,33 @@ def _downsample_for_heatmap(
     return window_df.iloc[::time_step, ::fiber_step]
 
 
+def _theme_config(theme_name: str) -> dict[str, str]:
+    theme = str(theme_name).lower()
+    if theme == THEME_LIGHT:
+        return {
+            "theme": THEME_LIGHT,
+            "plot_template": "plotly_white",
+            "paper_bg": "white",
+            "plot_bg": "white",
+            "text_color": "#111111",
+            "crosshair_color": "#111111",
+            "temp_axis_color": TEMP_AXIS_COLOR_LIGHT,
+            "pump_axis_color": PUMP_AXIS_COLOR_LIGHT,
+            "note_bg": "rgba(255,255,255,0.88)",
+        }
+    return {
+        "theme": THEME_DARK,
+        "plot_template": "plotly_dark",
+        "paper_bg": "black",
+        "plot_bg": "black",
+        "text_color": "#ffffff",
+        "crosshair_color": "white",
+        "temp_axis_color": TEMP_AXIS_COLOR_DARK,
+        "pump_axis_color": PUMP_AXIS_COLOR_DARK,
+        "note_bg": "rgba(0,0,0,0.45)",
+    }
+
+
 def _heatmap_figure(
     window_df: pd.DataFrame,
     click_ts: pd.Timestamp,
@@ -311,6 +438,7 @@ def _heatmap_figure(
     temp_min: float,
     temp_max: float,
     cmap_name: str,
+    theme_cfg: dict[str, str],
 ) -> go.Figure:
     z_data = np.clip(window_df.to_numpy(dtype=float).T, MIN_PHYSICAL_TEMP_C, MAX_PHYSICAL_TEMP_C)
     colorscale_name = PLOTLY_COLORSCALE_MAP.get(str(cmap_name).lower(), "Plasma")
@@ -329,7 +457,8 @@ def _heatmap_figure(
                     "<br>Temperature: %{z:.3f} degC<extra></extra>"
                 ),
                 colorbar={
-                    "title": "Temp (\u00b0C)",
+                    "title": {"text": "Temp (\u00b0C)", "font": {"size": COLORBAR_TITLE_FONT_SIZE}},
+                    "tickfont": {"size": COLORBAR_TICK_FONT_SIZE},
                     "thickness": 14,
                     "x": 1.01,
                     "len": 1.0,
@@ -342,29 +471,37 @@ def _heatmap_figure(
 
     fig.add_vline(
         x=click_ts,
-        line_color="white",
+        line_color=theme_cfg["crosshair_color"],
         line_dash="dot",
         line_width=1.5,
     )
     fig.add_hline(
         y=click_dist,
-        line_color="white",
+        line_color=theme_cfg["crosshair_color"],
         line_dash="dot",
         line_width=1.5,
     )
 
     fig.update_layout(
         margin={"l": 50, "r": 30, "t": 4, "b": 26},
-        template="plotly_dark",
-        paper_bgcolor="black",
-        plot_bgcolor="black",
+        template=theme_cfg["plot_template"],
+        paper_bgcolor=theme_cfg["paper_bg"],
+        plot_bgcolor=theme_cfg["plot_bg"],
+        font={"color": theme_cfg["text_color"]},
         clickmode="event",
     )
-    fig.update_xaxes(title_text="Time", range=x_range)
+    fig.update_xaxes(
+        title={"text": "Time", "font": {"size": AXIS_TITLE_FONT_SIZE}},
+        tickfont={"size": AXIS_TICK_FONT_SIZE},
+        range=x_range,
+        color=theme_cfg["text_color"],
+    )
     fig.update_yaxes(
-        title_text="Fiber length (m)",
+        title={"text": "Fiber length (m)", "font": {"size": AXIS_TITLE_FONT_SIZE}},
+        tickfont={"size": AXIS_TICK_FONT_SIZE},
         range=[y_range[1], y_range[0]],
         tickformat=".1f",
+        color=theme_cfg["text_color"],
     )
 
     return fig
@@ -377,33 +514,98 @@ def _time_series_figure(
     channel_name: str,
     temp_min: float,
     temp_max: float,
+    pump_rate_series: pd.Series | None,
+    pump_status_note: str | None,
+    theme_cfg: dict[str, str],
 ) -> go.Figure:
     distances = window_df.columns.to_numpy(dtype=float)
     dist_idx, snapped_dist = _nearest_value(distances, click_dist)
     series = window_df.iloc[:, dist_idx]
     clipped_values = np.clip(series.values, MIN_PHYSICAL_TEMP_C, MAX_PHYSICAL_TEMP_C)
 
-    fig = go.Figure(
-        data=[
-            go.Scatter(
-                x=series.index,
-                y=clipped_values,
-                mode="lines",
-                line={"width": 1.8},
-                hovertemplate="Time: %{x}<br>Temperature: %{y:.3f} degC<extra></extra>",
+    fig = go.Figure()
+
+    has_pump_trace = False
+    if pump_rate_series is not None and not pump_rate_series.empty:
+        combined_index = pump_rate_series.index.union(series.index).sort_values()
+        aligned_pump = (
+            pump_rate_series.reindex(combined_index)
+            .interpolate(method="time")
+            .reindex(series.index)
+        )
+        if aligned_pump.notna().any():
+            fig.add_trace(
+                go.Scatter(
+                    x=series.index,
+                    y=aligned_pump,
+                    mode="lines",
+                    line={"width": 1.2, "color": theme_cfg["pump_axis_color"]},
+                    opacity=0.5,
+                    yaxis="y2",
+                    hovertemplate="Time: %{x}<br>Pumping rate: %{y:.3f} m³/h<extra></extra>",
+                )
             )
-        ]
+            has_pump_trace = True
+
+    fig.add_trace(
+        go.Scatter(
+            x=series.index,
+            y=clipped_values,
+            mode="lines",
+            line={"width": 1.8, "color": theme_cfg["temp_axis_color"]},
+            hovertemplate="Time: %{x}<br>Temperature: %{y:.3f} degC<extra></extra>",
+        )
     )
+
     fig.update_layout(
         title=f"Time profile at fiber {snapped_dist:.1f} m ({channel_name})",
         margin={"l": 50, "r": 20, "t": 28, "b": 34},
-        template="plotly_dark",
-        paper_bgcolor="black",
-        plot_bgcolor="black",
+        template=theme_cfg["plot_template"],
+        paper_bgcolor=theme_cfg["paper_bg"],
+        plot_bgcolor=theme_cfg["plot_bg"],
+        font={"color": theme_cfg["text_color"]},
         clickmode="event",
+        showlegend=False,
     )
-    fig.update_xaxes(title_text="Time")
-    fig.update_yaxes(title_text="Temp (\u00b0C)")
+    fig.update_xaxes(
+        title={"text": "Time", "font": {"size": AXIS_TITLE_FONT_SIZE}},
+        tickfont={"size": AXIS_TICK_FONT_SIZE},
+        color=theme_cfg["text_color"],
+    )
+    fig.update_yaxes(
+        title={"text": "Temp (\u00b0C)", "font": {"size": AXIS_TITLE_FONT_SIZE}},
+        tickfont={"size": AXIS_TICK_FONT_SIZE},
+        color=theme_cfg["temp_axis_color"],
+    )
+    if has_pump_trace:
+        fig.update_layout(
+            yaxis2={
+                "title": {"text": "Pumping rate (m³/h)", "font": {"size": AXIS_TITLE_FONT_SIZE}},
+                "tickfont": {"size": AXIS_TICK_FONT_SIZE},
+                "overlaying": "y",
+                "side": "right",
+                "showgrid": False,
+                "color": theme_cfg["pump_axis_color"],
+            }
+        )
+    else:
+        note_text = "Pump: no data" if not pump_status_note else f"Pump: {pump_status_note}"
+        fig.add_annotation(
+            xref="paper",
+            yref="paper",
+            x=0.995,
+            y=0.99,
+            text=note_text,
+            showarrow=False,
+            xanchor="right",
+            yanchor="top",
+            font={"size": 11, "color": theme_cfg["pump_axis_color"]},
+            align="right",
+            bgcolor=theme_cfg["note_bg"],
+            bordercolor=theme_cfg["pump_axis_color"],
+            borderwidth=1,
+            borderpad=3,
+        )
     return fig
 
 
@@ -414,6 +616,7 @@ def _fiber_profile_figure(
     channel_name: str,
     temp_min: float,
     temp_max: float,
+    theme_cfg: dict[str, str],
 ) -> go.Figure:
     time_idx, snapped_ts = _nearest_timestamp(window_df.index, click_ts)
     profile = window_df.iloc[time_idx, :]
@@ -425,7 +628,7 @@ def _fiber_profile_figure(
                 x=clipped_values,
                 y=profile.index.to_numpy(dtype=float),
                 mode="lines",
-                line={"width": 1.8},
+                line={"width": 1.8, "color": theme_cfg["temp_axis_color"]},
                 hovertemplate="Temperature: %{x:.3f} degC<br>Fiber: %{y:.1f} m<extra></extra>",
             )
         ]
@@ -433,13 +636,24 @@ def _fiber_profile_figure(
     fig.update_layout(
         title=f"Fiber profile at {snapped_ts} ({channel_name})",
         margin={"l": 55, "r": 20, "t": 28, "b": 34},
-        template="plotly_dark",
-        paper_bgcolor="black",
-        plot_bgcolor="black",
+        template=theme_cfg["plot_template"],
+        paper_bgcolor=theme_cfg["paper_bg"],
+        plot_bgcolor=theme_cfg["plot_bg"],
+        font={"color": theme_cfg["text_color"]},
         clickmode="event",
     )
-    fig.update_xaxes(title_text="Temp (\u00b0C)")
-    fig.update_yaxes(title_text="Fiber length (m)", autorange="reversed", tickformat=".1f")
+    fig.update_xaxes(
+        title={"text": "Temp (\u00b0C)", "font": {"size": AXIS_TITLE_FONT_SIZE}},
+        tickfont={"size": AXIS_TICK_FONT_SIZE},
+        color=theme_cfg["temp_axis_color"],
+    )
+    fig.update_yaxes(
+        title={"text": "Fiber length (m)", "font": {"size": AXIS_TITLE_FONT_SIZE}},
+        tickfont={"size": AXIS_TICK_FONT_SIZE},
+        autorange="reversed",
+        tickformat=".1f",
+        color=theme_cfg["text_color"],
+    )
     return fig
 
 
@@ -471,9 +685,59 @@ def _install_browser_lifecycle(app: Dash) -> None:
         {%css%}
         <style>
             body {
-                background: #000000;
-                color: #ffffff;
+                margin: 0;
+                background: var(--page-bg);
+                color: var(--page-text);
                 font-family: Aptos, "Aptos Display", Calibri, "Segoe UI", sans-serif;
+            }
+            :root,
+            body:has(#app-root.theme-dark) {
+                --page-bg: #000000;
+                --page-text: #ffffff;
+                --slider-track: rgba(127, 75, 196, 1);
+                --slider-rail: rgba(127, 75, 196, 0.3);
+                --temp-track: rgba(120, 22, 22, 0.95);
+                --temp-rail: rgba(120, 22, 22, 0.28);
+                --temp-thumb-bg: #5f1414;
+                --temp-thumb-border: #8e2a2a;
+                --tooltip-bg: #202938;
+                --tooltip-text: #f5f7fb;
+                --tooltip-border: #3f4e66;
+                --dropdown-bg: #000000;
+                --dropdown-content-bg: #111111;
+                --dropdown-text: #ffffff;
+                --dropdown-border: #555555;
+                --dropdown-hover-bg: #2a2a2a;
+                --dropdown-selected-bg: #333333;
+                --dropdown-search-bg: #1a1a1a;
+                --dropdown-search-border: #333333;
+                --dropdown-placeholder: #888888;
+            }
+            body:has(#app-root.theme-light) {
+                --page-bg: #ffffff;
+                --page-text: #111111;
+                --slider-track: rgba(98, 63, 170, 0.9);
+                --slider-rail: rgba(98, 63, 170, 0.24);
+                --temp-track: rgba(155, 40, 40, 0.85);
+                --temp-rail: rgba(155, 40, 40, 0.22);
+                --temp-thumb-bg: #8a2f2f;
+                --temp-thumb-border: #a94a4a;
+                --tooltip-bg: #f2f4f8;
+                --tooltip-text: #16181d;
+                --tooltip-border: #b4bfd3;
+                --dropdown-bg: #ffffff;
+                --dropdown-content-bg: #ffffff;
+                --dropdown-text: #111111;
+                --dropdown-border: #888888;
+                --dropdown-hover-bg: #e8edf7;
+                --dropdown-selected-bg: #dfe7f8;
+                --dropdown-search-bg: #ffffff;
+                --dropdown-search-border: #b6bdca;
+                --dropdown-placeholder: #7b8392;
+            }
+            #app-root {
+                background: var(--page-bg);
+                color: var(--page-text);
             }
             button,
             input,
@@ -491,14 +755,14 @@ def _install_browser_lifecycle(app: Dash) -> None:
             .Select-value-label,
             .Select-placeholder,
             .Select-input > input {
-                background-color: #000000 !important;
-                color: #ffffff !important;
+                background-color: var(--dropdown-bg) !important;
+                color: var(--dropdown-text) !important;
             }
             .Select-option.is-focused {
-                background-color: #222222 !important;
+                background-color: var(--dropdown-hover-bg) !important;
             }
             .rc-slider-mark-text {
-                color: #ffffff !important;
+                color: var(--page-text) !important;
             }
             .dash-range-slider-input,
             .dash-range-slider-min-input,
@@ -534,29 +798,29 @@ def _install_browser_lifecycle(app: Dash) -> None:
                 font-size: 0 !important;
             }
             .axis-slider-no-marks .rc-slider-track {
-                background-color: rgba(127, 75, 196, 1) !important;
+                background-color: var(--slider-track) !important;
             }
             .axis-slider-no-marks .rc-slider-rail {
-                background-color: rgba(127, 75, 196, 0.3) !important;
+                background-color: var(--slider-rail) !important;
             }
             .axis-slider-no-marks .dash-slider-range {
-                background-color: rgba(127, 75, 196, 1) !important;
+                background-color: var(--slider-track) !important;
             }
             .axis-slider-no-marks .dash-slider-track {
-                background-color: rgba(127, 75, 196, 0.3) !important;
+                background-color: var(--slider-rail) !important;
             }
             #temp-slider .dash-slider-range,
             #temp-slider .rc-slider-track {
-                background-color: rgba(120, 22, 22, 0.95) !important;
+                background-color: var(--temp-track) !important;
             }
             #temp-slider .dash-slider-track,
             #temp-slider .rc-slider-rail {
-                background-color: rgba(120, 22, 22, 0.28) !important;
+                background-color: var(--temp-rail) !important;
             }
             #temp-slider .dash-slider-thumb,
             #temp-slider .rc-slider-handle {
-                background-color: #5f1414 !important;
-                border: 2px solid #8e2a2a !important;
+                background-color: var(--temp-thumb-bg) !important;
+                border: 2px solid var(--temp-thumb-border) !important;
                 box-shadow: none !important;
             }
             #imshow-graph,
@@ -590,9 +854,9 @@ def _install_browser_lifecycle(app: Dash) -> None:
                 z-index: 1200 !important;
             }
             .rc-slider-tooltip-inner {
-                background: linear-gradient(135deg, #141821 0%, #202938 100%) !important;
-                color: #f5f7fb !important;
-                border: 1px solid #3f4e66 !important;
+                background: var(--tooltip-bg) !important;
+                color: var(--tooltip-text) !important;
+                border: 1px solid var(--tooltip-border) !important;
                 border-radius: 10px !important;
                 box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35) !important;
                 font-size: 12px !important;
@@ -602,22 +866,22 @@ def _install_browser_lifecycle(app: Dash) -> None:
                 padding: 4px 8px !important;
             }
             .rc-slider-tooltip-content {
-                color: #f5f7fb !important;
+                color: var(--tooltip-text) !important;
             }
             .rc-slider-tooltip-arrow {
-                border-top-color: #202938 !important;
-                border-bottom-color: #202938 !important;
-                border-left-color: #202938 !important;
-                border-right-color: #202938 !important;
+                border-top-color: var(--tooltip-bg) !important;
+                border-bottom-color: var(--tooltip-bg) !important;
+                border-left-color: var(--tooltip-bg) !important;
+                border-right-color: var(--tooltip-bg) !important;
             }
             body .dash-slider-tooltip,
             div.dash-slider-tooltip {
-                background: linear-gradient(135deg, #141821 0%, #202938 100%) !important;
-                background-color: #202938 !important;
-                color: #f5f7fb !important;
+                background: var(--tooltip-bg) !important;
+                background-color: var(--tooltip-bg) !important;
+                color: var(--tooltip-text) !important;
                 position: absolute !important;
                 z-index: 2147483647 !important;
-                border: 1px solid #3f4e66 !important;
+                border: 1px solid var(--tooltip-border) !important;
                 border-radius: 10px !important;
                 box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35) !important;
                 font-size: 12px !important;
@@ -627,17 +891,17 @@ def _install_browser_lifecycle(app: Dash) -> None:
                 padding: 4px 8px !important;
             }
             .dash-slider-tooltip > div {
-                color: #f5f7fb !important;
+                color: var(--tooltip-text) !important;
                 font-weight: 700 !important;
             }
             body .dash-slider-tooltip::before,
             body .dash-slider-tooltip::after,
             div.dash-slider-tooltip::before,
             div.dash-slider-tooltip::after {
-                border-top-color: #202938 !important;
-                border-bottom-color: #202938 !important;
-                border-left-color: #202938 !important;
-                border-right-color: #202938 !important;
+                border-top-color: var(--tooltip-bg) !important;
+                border-bottom-color: var(--tooltip-bg) !important;
+                border-left-color: var(--tooltip-bg) !important;
+                border-right-color: var(--tooltip-bg) !important;
             }
             .dropdown-wrapper label {
                 font-size: 12px;
@@ -651,54 +915,54 @@ def _install_browser_lifecycle(app: Dash) -> None:
                 display: flex;
                 flex-direction: row;
                 gap: 6px;
-                width: 246px;
+                width: auto;
                 margin-bottom: 0px;
             }
             /* Dash 4 dropdown button */
             .dash-dropdown {
-                background-color: #000000 !important;
-                color: #ffffff !important;
-                border: 1px solid #555555 !important;
+                background-color: var(--dropdown-bg) !important;
+                color: var(--dropdown-text) !important;
+                border: 1px solid var(--dropdown-border) !important;
                 border-radius: 4px !important;
                 width: 100% !important;
                 cursor: pointer !important;
                 min-height: 32px !important;
             }
             .dash-dropdown:hover {
-                border-color: #888888 !important;
+                border-color: var(--dropdown-border) !important;
             }
             /* Dropdown popup/menu */
             .dash-dropdown-content {
-                background-color: #111111 !important;
-                border: 1px solid #555555 !important;
+                background-color: var(--dropdown-content-bg) !important;
+                border: 1px solid var(--dropdown-border) !important;
                 border-radius: 4px !important;
-                color: #ffffff !important;
+                color: var(--dropdown-text) !important;
             }
             /* Search input inside dropdown */
             .dash-dropdown-search {
-                background-color: #1a1a1a !important;
-                color: #ffffff !important;
+                background-color: var(--dropdown-search-bg) !important;
+                color: var(--dropdown-text) !important;
                 border: none !important;
-                border-bottom: 1px solid #333333 !important;
+                border-bottom: 1px solid var(--dropdown-search-border) !important;
                 outline: none !important;
             }
             .dash-dropdown-search::placeholder {
-                color: #888888 !important;
+                color: var(--dropdown-placeholder) !important;
             }
             /* Option items */
             .dash-dropdown-option {
-                background-color: #111111 !important;
-                color: #ffffff !important;
+                background-color: var(--dropdown-content-bg) !important;
+                color: var(--dropdown-text) !important;
             }
             .dash-dropdown-option:hover {
-                background-color: #2a2a2a !important;
+                background-color: var(--dropdown-hover-bg) !important;
             }
             .dash-dropdown-option.selected {
-                background-color: #333333 !important;
-                color: #ffffff !important;
+                background-color: var(--dropdown-selected-bg) !important;
+                color: var(--dropdown-text) !important;
             }
             .dash-options-list-option-text {
-                color: #ffffff !important;
+                color: var(--dropdown-text) !important;
             }
         </style>
     </head>
@@ -806,6 +1070,7 @@ def make_app(channel_dfs: dict[str, pd.DataFrame]) -> Dash:
     time_max = int(default_df.index[-1].value // 10**9)
     dist_min = round(float(default_df.columns.min()), 1)
     dist_max = round(float(default_df.columns.max()), 1)
+    pump_rate_series, pump_status_note = _load_pump_rate_series(Path(__file__).resolve().parent)
     deltares_logo_src = _image_data_uri(Path(__file__).with_name("DELTARES-logo.png"))
     fusionfiber_logo_src = _image_data_uri(Path(__file__).with_name("FusionFiber_logo.png"))
 
@@ -860,6 +1125,24 @@ def make_app(channel_dfs: dict[str, pd.DataFrame]) -> Dash:
                                         style={"width": "120px", "minWidth": "120px"},
                                         className="dropdown-wrapper",
                                         id="cmap-wrapper-div",
+                                    ),
+                                    html.Div(
+                                        [
+                                            html.Label("Theme"),
+                                            dcc.Dropdown(
+                                                id="theme-dropdown",
+                                                options=[
+                                                    {"label": "dark", "value": THEME_DARK},
+                                                    {"label": "light", "value": THEME_LIGHT},
+                                                ],
+                                                value=THEME_DARK,
+                                                clearable=False,
+                                                searchable=False,
+                                                className="cmap-channel-dropdown",
+                                            ),
+                                        ],
+                                        style={"width": "120px", "minWidth": "120px"},
+                                        className="dropdown-wrapper",
                                     ),
                                 ],
                                 className="top-controls-row",
@@ -1056,7 +1339,9 @@ def make_app(channel_dfs: dict[str, pd.DataFrame]) -> Dash:
                 },
             ),
         ],
-        style={"padding": "6px 10px", "backgroundColor": "black", "color": "white", "minHeight": "100vh"},
+        id="app-root",
+        className="theme-dark",
+        style={"padding": "6px 10px", "minHeight": "100vh"},
     )
 
     @app.callback(
@@ -1213,17 +1498,29 @@ def make_app(channel_dfs: dict[str, pd.DataFrame]) -> Dash:
         return {"channel": channel_name, "ts": str(snapped_ts), "dist": snapped_dist}
 
     @app.callback(
+        Output("app-root", "className"),
+        Input("theme-dropdown", "value"),
+    )
+    def _update_theme_class(theme_name):
+        theme = str(theme_name).lower()
+        if theme not in {THEME_DARK, THEME_LIGHT}:
+            theme = THEME_DARK
+        return f"theme-{theme}"
+
+    @app.callback(
         Output("imshow-graph", "figure"),
         Output("timeseries-graph", "figure"),
         Output("fiberprofile-graph", "figure"),
         Input("channel-dropdown", "value"),
         Input("cmap-dropdown", "value"),
+        Input("theme-dropdown", "value"),
         Input("time-slider", "value"),
         Input("fiber-slider", "value"),
         Input("click-store", "data"),
         Input("temp-slider", "value"),
     )
-    def _update_figures(channel_name, cmap_name, time_range, fiber_range, click_store, temp_range):
+    def _update_figures(channel_name, cmap_name, theme_name, time_range, fiber_range, click_store, temp_range):
+        theme_cfg = _theme_config(theme_name)
         df = channel_dfs[channel_name]
         actual_fiber_range = [-fiber_range[1], -fiber_range[0]]
         d0 = float(min(actual_fiber_range))
@@ -1234,9 +1531,10 @@ def make_app(channel_dfs: dict[str, pd.DataFrame]) -> Dash:
         if window_df.empty:
             empty_fig = go.Figure()
             empty_fig.update_layout(
-                template="plotly_dark",
-                paper_bgcolor="black",
-                plot_bgcolor="black",
+                template=theme_cfg["plot_template"],
+                paper_bgcolor=theme_cfg["paper_bg"],
+                plot_bgcolor=theme_cfg["plot_bg"],
+                font={"color": theme_cfg["text_color"]},
                 title="No data in selected axis limits",
             )
             return empty_fig, empty_fig, empty_fig
@@ -1280,6 +1578,7 @@ def make_app(channel_dfs: dict[str, pd.DataFrame]) -> Dash:
             temp_min=temp_min,
             temp_max=temp_max,
             cmap_name=cmap_name,
+            theme_cfg=theme_cfg,
         )
 
         time_fig = _time_series_figure(
@@ -1289,6 +1588,9 @@ def make_app(channel_dfs: dict[str, pd.DataFrame]) -> Dash:
             channel_name,
             temp_min,
             temp_max,
+            pump_rate_series,
+            pump_status_note,
+            theme_cfg,
         )
         fiber_fig = _fiber_profile_figure(
             window_df,
@@ -1297,6 +1599,7 @@ def make_app(channel_dfs: dict[str, pd.DataFrame]) -> Dash:
             channel_name,
             temp_min,
             temp_max,
+            theme_cfg,
         )
 
         return imshow_fig, time_fig, fiber_fig
@@ -1304,15 +1607,17 @@ def make_app(channel_dfs: dict[str, pd.DataFrame]) -> Dash:
     @app.callback(
         Output("cmap-wrapper-div", "style"),
         Input("cmap-dropdown", "value"),
+        Input("theme-dropdown", "value"),
     )
-    def _update_cmap_dropdown_style(selected_cmap):
-        start_color = CMAP_START_COLORS.get(str(selected_cmap).lower(), "rgb(100,100,100)")
+    def _update_cmap_dropdown_style(selected_cmap, theme_name):
+        text_color = "#ffffff" if str(theme_name).lower() != THEME_LIGHT else "#111111"
         return {
             "width": "120px",
             "minWidth": "120px",
             "marginBottom": "0px",
             "paddingBottom": "2px",
-            "borderBottom": f"2px solid {start_color}",
+            "borderBottom": "none",
+            "color": text_color,
         }
 
     return app

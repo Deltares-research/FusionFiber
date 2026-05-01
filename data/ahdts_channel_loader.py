@@ -7,6 +7,7 @@ result to a single pickle file. It intentionally contains no experiment-specific
 settings.
 """
 
+import logging
 from pathlib import Path
 
 import numpy as np
@@ -20,7 +21,7 @@ from ahdts import (
 )
 
 
-def build_combined_channel_pickle(base_dir, channel_names, output_pickle_path, data_key="Temperature", use_multiprocessing=False):
+def build_combined_channel_pickle(base_dir, channel_names, output_pickle_path, data_key="Temperature", use_multiprocessing=False, dtype="float32"):
     """Load XML data for channels under base_dir and save one combined pickle.
 
     Parameters
@@ -33,6 +34,11 @@ def build_combined_channel_pickle(base_dir, channel_names, output_pickle_path, d
         Full output pickle filepath, including filename and .pickle extension.
     data_key : str
         Signal key passed to data_to_df, defaults to "Temperature".
+    use_multiprocessing : bool
+        Whether to use multiprocessing, defaults to False.
+    dtype : str or numpy.dtype
+        Data type for temperature values, defaults to "float32".
+        Options: "float32" (default), "float16", "int16" (with 100x scaling).
     """
     base_dir = Path(base_dir)
     output_pickle_path = Path(output_pickle_path)
@@ -44,15 +50,17 @@ def build_combined_channel_pickle(base_dir, channel_names, output_pickle_path, d
     for channel_name in channel_names:
         channel_dir = base_dir / channel_name
         if not channel_dir.exists():
-            raise FileNotFoundError(f"Channel folder not found: {channel_dir}")
+            logging.warning(f"Channel folder not found, skipping: {channel_dir}")
+            continue
 
         xml_files = get_filepaths(channel_dir, "xml")
         if not xml_files:
-            raise FileNotFoundError(f"No XML files found in: {channel_dir}")
+            logging.warning(f"No XML files found in {channel_name}, skipping: {channel_dir}")
+            continue
 
         print(f"Loading {channel_name}: {len(xml_files)} xml files")
         data_dict = xml_to_dict2(xml_files, use_multiprocessing=use_multiprocessing)
-        df = data_to_df(data_dict, data_key).astype("float32")
+        df = data_to_df(data_dict, data_key).astype(dtype)
 
         all_channel_data[channel_name] = {
             "df": df,
@@ -61,10 +69,13 @@ def build_combined_channel_pickle(base_dir, channel_names, output_pickle_path, d
             "distance_max": float(df.columns.max()),
         }
 
+    if not all_channel_data:
+        raise ValueError(f"No channels loaded successfully from {base_dir}. Check that channel folders exist and contain XML files.")
+
     output_dir = output_pickle_path.parent
     output_name = output_pickle_path.stem
     save_as_pickle(output_dir, all_channel_data, output_name)
-    print(f"Saved combined pickle: {output_pickle_path}")
+    print(f"Saved combined pickle: {output_pickle_path} ({len(all_channel_data)} channels)")
 
 
 def build_qc_snapshot_pickle(all_channel_data, timestamp_str, output_pickle_path):
@@ -121,14 +132,20 @@ def summarize_peak_temperatures(
     measurement_length_start,
     measurement_length_end,
 ):
+    if not plot_locations:
+        logging.warning("summarize_peak_temperatures called with no plot locations; returning empty summary.")
+        return pd.DataFrame()
+
     rows = []
     for location_key in plot_locations:
         if location_key not in location_info:
-            raise KeyError(f"Unknown location key: {location_key}")
+            logging.warning(f"Unknown location key '{location_key}', skipping.")
+            continue
 
         channel_name = location_info[location_key][3]
         if channel_name not in all_channel_data:
-            raise KeyError(f"Channel not found in combined data: {channel_name}")
+            logging.warning(f"Channel not found in combined data for '{location_key}': {channel_name}, skipping.")
+            continue
 
         df = all_channel_data[channel_name]["df"]
         distance_mask = (
@@ -136,10 +153,11 @@ def summarize_peak_temperatures(
             & (df.columns <= measurement_length_end)
         )
         if not distance_mask.any():
-            raise ValueError(
+            logging.warning(
                 f"No distance columns found for {location_key} within "
-                f"{measurement_length_start} to {measurement_length_end} m"
+                f"{measurement_length_start} to {measurement_length_end} m; skipping."
             )
+            continue
 
         interval_df = df.loc[:, distance_mask]
         values = interval_df.to_numpy(copy=False)
@@ -165,6 +183,10 @@ def summarize_peak_temperatures(
                 "interval_end_m": measurement_length_end,
             }
         )
+
+    if not rows:
+        logging.warning("No peak temperature rows generated; returning empty summary.")
+        return pd.DataFrame()
 
     summary = pd.DataFrame(rows).sort_values(["peak_temp_C", "location"], ascending=[False, True])
 

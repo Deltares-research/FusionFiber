@@ -1,55 +1,82 @@
-AI notes from ATES QC viewer session
+AI notes from ATES QC viewer and ATES scripts session
 
 User preferences
-- Keep iterating quickly on visual details and exact alignment.
-- Prefer concise, direct changes over broad redesigns.
-- Keep UI dark with exact requested labels/text.
-- For copied scripts, user prefers simplified and minimal code paths.
-- Always use Pixi commands/tasks for run and validation.
+- Iterate quickly with small, exact visual updates instead of broad redesign.
+- Keep code concise and practical, especially when simplifying copied scripts.
+- Prefer direct execution and verification (run it and fix it), not only static edits.
+- Keep labels and formatting exactly as requested (time/date axis details matter).
+- Use Pixi tasks for normal run flow when available.
 
-Runbook to resume after restart
-- Compile check after each script edit:
-  1) pixi run compile-ates-app
-- Run app without opening extra tabs:
-  1) pixi run ates-app-nobrowser
-- Normal app run (if needed):
-  1) pixi run ates-app
+Primary scripts and ownership
+- Main interactive app: ates-app/ates-app.py
+- Main ATES batch script: data/ates_action_research.py
+- Heating curve script: data/ates_action_select_heat_curves.py
+- Keep experiment/reference scripts unless explicitly asked to remove.
 
-Stale process and port hygiene
-- Confirm the process serving port 8050 before trusting browser measurements.
-- Stale process symptom: browser UI does not match current file content.
-- Reliable stale-process check:
+Current runbook
+- App run (normal): pixi run ates-app
+- App run (no auto browser): pixi run ates-app-nobrowser
+- App compile check: pixi run compile-check-ates-app
+- Research compile check: python -m py_compile data/ates_action_research.py
+- Heat-curve run: pixi run ates-curve-selection
+
+Known workflow gotchas
+- Stale process symptom: browser view does not match latest code.
+- Port/process check on Windows:
   1) Get-NetTCPConnection -LocalPort 8050 -State Listen
   2) Get-CimInstance Win32_Process -Filter "ProcessId = <pid>"
-  3) Stop stale python process directly if needed.
-- Keep only one live test tab during alignment work.
+  3) Stop stale Python process if needed.
+- Keep one active tab when tuning layout to avoid mixed state.
 
-Current project/task state
-- Main app script location: ates-app/ates_qc_interactive_viewer.py
-- Default pickle path in script points to: data/ates_action_flush_experiment.pickle
-- Pixi tasks in pyproject.toml:
-  - ates-app
-  - ates-app-nobrowser
-  - compile-ates-app
+Data and channel handling decisions
+- data/ates_action_research.py now supports dataset switching with CONFIG_KEY_DATA_DIR:
+  - data_dir_ates_afterspui
+  - data_dir_ates_spui_en_afterspui
+- data/ates_action_research.py supports PICKLE_DTYPE (for example float32 or float16).
+- Missing channels must not crash workflow:
+  - data/ahdts_channel_loader.py warns and skips missing channel folders/XML.
+  - data/ates_action_research.py filters plot locations to available channels and warns.
+  - If no valid filtered locations remain, summary/QC plotting is skipped with warnings.
 
-Current UI state (latest)
-- Header row: title and both dropdowns are adjacent on the left (not pushed to far right).
-- Additional spacing is reintroduced between header and imshow for cleaner layout.
-- Imshow and vertical sliders were increased in height to use extra bottom space:
-  - IMSHOW_HEIGHT_PX = 620
-  - FIBER_SLIDER_HEIGHT_PX = 548
-  - TEMP_SLIDER_HEIGHT_PX = 505
-- Top/bottom margins and outer padding were tightened to recover vertical room.
+Pump data integration lessons
+- Pump Excel parsing needs tolerant matching:
+  - Case-insensitive sheet matching.
+  - Flexible column matching by normalized tokens.
+- If pump file/columns are missing, proceed with warning and continue plotting without pump trace.
 
-Current logo state (latest)
-- Deltares logo:
-  - Uses DELTARES-logo.png
-  - Fixed overlay at top-right
-  - Reduced size to avoid overlap with right plot title.
-- FusionFiber logo:
-  - Uses FusionFiber_logo.png
-  - Is inside app layout, below the fiber profile plot (right column), not fixed to viewport.
+Heat-curve plotting decisions retained
+- Full timeline figure is intentionally very wide and tall for manual timestamp picking.
+- X-axis labels are 2-hour ticks; date appears under time at 00:00 and 12:00.
+- Timeline x-range is clipped to actual data extents (no artificial empty margins).
+- Pump line in full timeline is thicker and filled to 0 m3/h.
 
-Implemented behavior details to retain
-- Fiber slider uses negated value mapping for intuitive interaction with reversed y-axis.
-- Heartbeat/shutdown lifecycle routes are active and include request-log filtering to suppress noise for /_heartbeat and /_shutdown.
+UI decisions retained in app
+- Header controls and title are left-aligned for quick access.
+- Heatmap and slider dimensions are increased for better readability.
+- Fiber slider uses negated mapping for intuitive control with reversed y-axis.
+- Heartbeat/shutdown lifecycle routes are active and request-log noise for these routes is filtered.
+
+Do-not-regress checklist
+- Script/task path alignment:
+  - App script must stay at ates-app/ates-app.py.
+  - pyproject.toml tasks must reference ates-app/ates-app.py (ates-app, ates-app-nobrowser, compile-check-ates-app).
+  - Quick check: pixi run compile-check-ates-app
+- Missing channel resilience:
+  - build_combined_channel_pickle must warn/skip missing channel folders and missing XML sets.
+  - ates_action_research must filter unavailable channels and continue.
+  - No crash when selected locations map to missing channels.
+- Pump file robustness:
+  - Sheet/column matching must be tolerant (case/spacing/token variations).
+  - Missing or unreadable pump data must warn and continue without stopping plots.
+- Heat-curve timeline behavior:
+  - Full timeline keeps custom wide/tall size for manual timestamp selection.
+  - 2-hour tick cadence remains, with date shown below time at 00:00 and 12:00.
+  - x-axis stays clipped to actual non-NaN data extent.
+  - Pump line remains thicker and includes fill to 0 m3/h.
+- Viewer interaction integrity:
+  - Fiber slider negated mapping must remain consistent with reversed y-axis.
+  - Click-store snapping to nearest valid sample in current window must remain enabled.
+  - Reset View must reset ranges correctly for the active channel.
+- Runtime hygiene:
+  - Before visual validation, ensure no stale server process is still bound to port 8050.
+  - Prefer pixi run ates-app-nobrowser during rapid iteration to avoid extra stale tabs.
