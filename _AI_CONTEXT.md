@@ -2,7 +2,7 @@
 **READ THIS FIRST** - Auto-load these preferences before any operations
 
 ## CRITICAL WORKFLOW RULES
-1. **ALWAYS** use `pixi run python` (never direct python.exe)
+1. **ALWAYS** use Pixi for execution: `pixi run <task>` or `pixi run python <script>` (never direct python.exe)
 2. **REQUIRED**: Configure Python environment before ANY Python operations
 3. **MATPLOTLIB**: Use 'Agg' backend for headless plotting (no GUI)
 4. **MEMORY**: Aggressive cleanup with `plt.close()` and `gc.collect()` after each plot

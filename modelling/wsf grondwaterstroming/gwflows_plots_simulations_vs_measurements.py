@@ -33,7 +33,8 @@ from pathlib import Path
 # Setup and data loading
 script_dir = Path(__file__).parent
 simulation_pickle_file = script_dir / 'gw_simulation_data.pkl'
-measurement_pickle_file = script_dir / 'gw_measured_data_position_4.pickle'
+#measurement_pickle_file = script_dir / 'gw_measured_data_position_4.pickle'
+measurement_pickle_file = script_dir / 'gw_measured_data_position_2.pickle'
 plots_dir = script_dir / 'plots'
 plots_dir.mkdir(exist_ok=True)
 
@@ -49,11 +50,19 @@ with open(measurement_pickle_file, 'rb') as f:
 # Selection settings
 # GW_IDS = None  # None: plot measurements only (no simulations); []: include all available gw runs; [...]: plot specific runs
 #GW_IDS = ['gw401', 'gw402', 'gw403', 'gw404', 'gw405', 'gw406', 'gw407', 'gw408', 'gw409', 'gw410', 'gw411', 'gw412','gw413', 'gw414', 'gw415', 'gw416', 'gw417', 'gw418', 'gw419', 'gw420']
-GW_IDS = ['gw401', 'gw406', 'gw411', 'gw416', 'gw421']
+#GW_IDS = ['gw401', 'gw406', 'gw411', 'gw416', 'gw421'] #voor locatie 4
+GW_IDS = ['gw401', 'gw402', 'gw403', 'gw404'] #voor locatie 2
 
 #MEAS_IDS = []  # None: plot simulations only (no measurements); []: include all measured series; [...]: plot specific measured series
-MEAS_IDS = ["Thermal response test", "P6 = 1.2 m/dag", "P4 = 2.8 m/dag",	"S5 = 11.6 m/dag", "S1 = 18.7 m/dag", "S4 = 19.6 m/dag", "S2 = 20.1 m/dag",	"S3 = 21.5 m/dag"]  # None: plot simulations only (no measurements); []: include all measured series; [...]: plot specific measured series
-# MEAS_IDS = None
+
+#locatie 4 
+#MEAS_IDS = ["Thermal response test", "P6 = 1.2 m/dag", "P4 = 2.8 m/dag",	"S5 = 11.6 m/dag", "S1 = 18.7 m/dag", "S4 = 19.6 m/dag", "S2 = 20.1 m/dag",	"S3 = 21.5 m/dag"]  # None: plot simulations only (no measurements); []: include all measured series; [...]: plot specific measured series
+
+#locatie 2 - small difference in header P instead of P4 for some reasons, but the same measurement
+MEAS_IDS = ["Thermal response test", "P6 = 1.2 m/dag", "P = 2.8 m/dag",	"S5 = 11.6 m/dag", "S1 = 18.7 m/dag", "S4 = 19.6 m/dag", "S2 = 20.1 m/dag",	"S3 = 21.5 m/dag"]  # None: plot simulations only (no measurements); []: include all measured series; [...]: plot specific measured series
+
+#for locatie 2 the MEAS_ID (P and S coding) has the same 
+MEAS_IDS_REPLACE = "Thermal response test", "P6 = 0.9 m/dag", "P = 0.9 m/dag",	"S5 = 0.7 m/dag", "S1 = 1.3 m/dag", "S4 = 1.2 m/dag", "S2 = 1.3 m/dag",	"S3 = 1.4 m/dag"
 
 # Plot settings
 LINE_WIDTH = 1.5  # line thickness for plotted curves
@@ -66,7 +75,7 @@ legend_title = 'Darcy Flux (m/dag)'
 legend_unit = 'm/dag'
 legend_decimals = 1
 max_flux_match_delta = 0.6  # maximum absolute delta in m/dag for auto-matching measured to simulated series
-APPLY_SAVGOL_FILTER = True  # if True, smooth y-values before plotting (disabled by default due to edge effects)
+APPLY_SAVGOL_FILTER = False  # if True, smooth y-values before plotting (disabled by default due to edge effects)
 SAVGOL_FILTER_TARGET = 'measurements'  # one of: 'measurements', 'simulations', 'both'
 SAVGOL_WINDOW_LENGTH = 15  # odd number of samples used by the smoothing window
 SAVGOL_POLYORDER = 3  # polynomial order for Savitzky-Golay smoothing
@@ -79,7 +88,8 @@ PLOT_YMIN = 19  # lower y-axis limit (degC); None = automatic
 PLOT_YMAX = 56  # upper y-axis limit (degC); None = automatic
 
 # outfile_basename = 'Darcy_flow_core_average_vs_measurements'
-outfile_basename = 'Simulations_vs_measurements'
+#outfile_basename = 'Simulations_vs_measurements_location4'
+outfile_basename = measurement_pickle_file.stem
 
 required_columns = {'gw', 'Time_min', 'Core_average', 'darcy_flux'}
 missing_columns = required_columns - set(simulation_data.columns)
@@ -107,6 +117,20 @@ if not selected_gw and GW_IDS is not None:
 	raise ValueError('No gw IDs selected for plotting.')
 if PLOT_TMAX_MIN is not None and PLOT_TMAX_MIN <= 0:
 	raise ValueError('PLOT_TMAX_MIN must be > 0 or None.')
+if MEAS_IDS_REPLACE:
+	if MEAS_IDS is None:
+		raise ValueError(
+			'MEAS_IDS_REPLACE was provided, but MEAS_IDS is None. '
+			'Provide MEAS_IDS so each replacement can be matched to a measurement ID.'
+		)
+	if len(MEAS_IDS_REPLACE) != len(MEAS_IDS):
+		raise ValueError(
+			'MEAS_IDS_REPLACE must contain exactly one legend label for each MEAS_IDS entry: '
+			f'found {len(MEAS_IDS_REPLACE)} replacements for {len(MEAS_IDS)} measurement IDs.'
+		)
+	measurement_legend_labels = dict(zip(MEAS_IDS, MEAS_IDS_REPLACE))
+else:
+	measurement_legend_labels = {}
 
 # Plot configuration
 plt.rcParams.update({'figure.figsize': (12, 7), 'font.size': 12, 'savefig.dpi': 600, 'lines.linewidth': LINE_WIDTH})
@@ -528,6 +552,7 @@ def create_plot(
 		series = measurement_series[series_name]
 		mapped_gw = measurement_mapping.get(series_name)
 		series_color = measurement_color_map[series_name]
+		legend_series_name = measurement_legend_labels.get(series_name, series_name)
 
 		if x_mode == 'seconds':
 			x_values = series.index.to_numpy(dtype=float) * 60.0
@@ -560,7 +585,7 @@ def create_plot(
 				linewidth=LINE_WIDTH * 0.9,
 				alpha=0.85,
 				color=series_color,
-				label=f"Meas {series_name}"
+				label=f"Meas {legend_series_name}"
 			)[0]
 			measurement_handles.append(line)
 		else:
@@ -571,7 +596,7 @@ def create_plot(
 				linewidth=LINE_WIDTH * 0.9,
 				alpha=0.85,
 				color=series_color,
-				label=f"Meas {series_name}"
+				label=f"Meas {legend_series_name}"
 			)[0]
 			measurement_handles.append(line)
 		plotted_meas_curves += 1

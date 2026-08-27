@@ -5,6 +5,7 @@ User preferences
 - Keep code concise and practical, especially when simplifying copied scripts.
 - Prefer direct execution and verification (run it and fix it), not only static edits.
 - Keep labels and formatting exactly as requested (time/date axis details matter).
+- Always use Pixi for execution in this repo (pixi run <task> or pixi run python <script>), never plain python directly.
 - Use Pixi tasks for normal run flow when available.
 
 Primary scripts and ownership
